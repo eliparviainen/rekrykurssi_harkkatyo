@@ -50,7 +50,7 @@ let epdbSessionDef = new mongoose.Schema({
     userId : { type: mongoose.Schema.Types.ObjectId, ref: 'epdbUser', required: true },
     token : { type: String, required: true },
     livesUntil : { type: Date, required: true },
-    logoutAfterMilliseconds : { type: Number, default: DEFAULT_TTL }
+    signoutAfterMilliseconds : { type: Number, default: DEFAULT_TTL }
 });
 
 epdbSession = mongoose.model('epdbSession', epdbSessionDef );
@@ -66,31 +66,134 @@ app.get('/epdb/structure', dblist_get);
 app.get('/epdb/structure/:dbId', dbinfo_get);
 app.post('/epdb/structure/:userId', dblist_post);
 
-app.post('/epdb/register', register_post);
-app.post('/epdb/login', login_post);
-app.post('/epdb/logout', logout_post);
+app.post('/epdb/signup', signup_post);
+app.post('/epdb/signin', signin_post);
+app.post('/epdb/signout', signout_post);
 
 let contentRouter = express.Router();
 contentRouter.get('/:userId/:dbId', content_get);
 contentRouter.post('/:userId/:dbId', content_post);
 contentRouter.put('/:userId/:dbId/:rowId', content_put);
 contentRouter.delete('/:userId/:dbId/:rowId', content_delete);
-app.use("/epdb/content",checkLoginStatus, checkDBaccess, contentRouter);
+app.use("/epdb/content",checkSigninStatus, checkDBaccess, contentRouter);
 
 // ============================================================
 // PLACEHOLDERS, muista toteuttaa nämä
 // ============================================================
 
+console.log("PUUTTUU: muista laittaa elinajan lisäys jonnekin");
 
-function checkLoginStatus(req, res, next) {
-    console.log("TOTEUTTAMATTA: checkLoginStatus");
+function checkSigninStatus(req, res, next) {
+    console.log("TOTEUTTAMATTA: checkSigninStatus");
     return next();    
 }
 
 function checkDBaccess(req, res, next) {
-    console.log("TOTEUTTAMATTA: checkLoginStatus");
+    console.log("TOTEUTTAMATTA: checkSigninStatus");
     return next();    
 }
+
+// ============================================================
+// errors
+// ============================================================
+
+function unknownError(res, err) {
+    if (err) { console.log("unknown error handler: ", err) }
+    return res.status(500).json({msg: "something could be wrong"})
+}
+
+function signInError(res, err) {
+    if (err) { console.log("sign-in error handler: ", err) }
+    return res.status(403).json({msg: "could not sign in"})
+}
+
+function signUpError(res, err) {
+    if (err) { console.log("sign-up error handler: ", err) }
+    res.status(422).json({msg: "could not sign up"})
+}
+
+
+function userNameConflict(res, userName) {
+    return res.status(409).json({msg: "username "+userName+" taken"}) }
+}
+
+
+
+// ============================================================
+// signin routes
+// ============================================================
+
+
+function signup_post(req, res) {
+
+    DBiface.findUserByName(req.body.userName, (err, user) => {
+
+	if (err) { return unknownError(res, err) }
+	if (user) { return userNameConflict(res, user.userName) }
+    
+	bcrypt.hash(req.body.password, 10, function(err,hash) {
+	    if (err) { return signupError(res, err) }
+	    let newUser = new epdbUser({userName: req.body.userName, password: hash})
+	    newUser.save( function(err,res) {
+		if (err) { return unknownError(res, err) }
+		return res.status(200).json({userId: newUser._id})
+	    }) // save
+	}) // bcrypt		 
+    }) // find by name
+}
+
+
+function signin_post(req, res) {
+
+    DBiface.findUserByName(req.body.userName, (err, user) => {
+	if (err) { return signInError(res, err) }
+
+	bcrypt.compare(req.body.password, user.password, function(err, success) {
+
+	    if (err) { return signInError(res, err) }
+	    
+	    DBiface.findSessionByUID(user, (err, existingSessionID) => {
+		if (err) { return unknownError(res, err) }
+		if (existingSessionID) {
+		    return res.status(200).json({userId: user._id, token: existingSession.token})
+		}
+		
+		console.log("POISTA: debugviestien siistimiseksi token vain 16 merkkiä");
+		let aux = 'abcdefghijklmnopqrstuvxyz0123456789';
+		newToken = 'TOKEN';
+		for (let i=0; i<16; i++) {
+		    newToken += aux[Math.floor(Math.random()*aux.length)];
+		}
+		console.log(newToken)
+
+		DBiface.newSession({
+		    userId : user,
+		    token : newToken,
+		    livesUntil : Date.now + DEFAULT_TTL,
+		    signoutAfterMilliseconds : DEFAULT_TTL
+		}, (function(err, session) {
+		    if (err) { return unknownError(res, err) }
+		    return res.status(200).json({userId: user._id, token: session.token})
+		}) // newSession
+	    }) // find session by userId
+	}) // bcrypt check password
+    }) // find userId by name
+}
+
+
+    
+function signout_post(req, res) {
+
+    DBiface.findSessionByUID(user, (err, session) => {
+	if (err) { return unknownError(res, err) }
+	if (existingSessionID) {
+	    DBiface.deleteSession(session, (err) => {
+		if (err) { return unknownError(res, err) }
+		return res.status(200).json({msg: "signed out"})
+	    }) // delete
+	}
+	return res.status(200).json({msg: "signed out"})
+    }
 
 
 
@@ -167,6 +270,13 @@ const DBiface = require('./epdb_dbinterface_mongoose');
 // ========================================
 // feikkikannat
 
+    
+    function newSession(sessionData, sendFun) {
+	let newSession = new epdbSession(sessionData);
+	newSession.save(sendFun);
+    }
+
+    
 function DBfindSessionByUID(userId, readyFun) {
     epdbSession.find({userId: userId}, (err, sessionEntry) => {
 
@@ -365,58 +475,6 @@ function dbinfo_get(req, res) {
 	return res.status(200).json({ "dbTitle": req.params.dbId+"/"+dbTitle, "dbTemplate": dbTemplate});
     }
 	  )}
-
-
-function register_post(req, res) {
-
-        console.log("TOTEUTTAMATTA: register_post");
-    return res.status(200).json({msg: "KESKEN"})
-}
-
-
-function logout_post(req, res) {
-
-        console.log("TOTEUTTAMATTA: logout_post");
-    return res.status(200).json({msg: "KESKEN"})
-}
-
-function login_post(req, res) {
-
-    console.log("KESKEN: virhekäsittelyt puuttuu niin tästä kun muualtakin");
-    
-    DBfindUserByName(req.body.userName, (err, user) => {
-
-	DBfindSessionByUID(user, (err, sessionID) => {
-	    
-	    if (!sessionID) {
-
-		let aux = 'abcdefghijklmnopqrstuvxyz0123456789';
-		newToken = 'TOKEN';
-		for (let i=0; i<16; i++) {
-		    newToken.push(aux[Math.floor(Math.rand()*aux.length)]);
-		}
-		console.log(newToken)
-	
-	let newSession = new epdbSession({
-	    userId : user,
-	    token : newToken,
-	    livesUntil : Date.now + DEFAULT_TTL,
-	    logoutAfterMilliseconds : DEFAULT_TTL
-	});
-		newSession.save(function(err, session) {
-		    
-		    return res.status(200).json({userId: user._id, token: session.token})
-		}) // save
-	    } else {
-		
-		return res.status(200).json({userId: user._id, token: session.token})		
-		
-	    }
-    
-	}) // find session by userId
-    }) // find userId by name
-}
-
 
 // ============================================================
 
