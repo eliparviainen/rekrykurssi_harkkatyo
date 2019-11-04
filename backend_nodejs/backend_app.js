@@ -66,26 +66,46 @@ app.get('/epdb/structure', dblist_get);
 app.get('/epdb/structure/:dbId', dbinfo_get);
 app.post('/epdb/structure/:userId', dblist_post);
 
-app.post('/epdb/register', login_register);
+app.post('/epdb/register', register_post);
 app.post('/epdb/login', login_post);
-app.post('/epdb/logout', login_logout);
+app.post('/epdb/logout', logout_post);
 
-app.get('/epdb/content/:userId/:dbId', content_get);
-app.post('/epdb/content/:userId/:dbId', content_post);
-app.put('/epdb/content/:userId/:dbId/:rowId', content_put);
-app.delete('/epdb/content/:userId/:dbId/:rowId', content_delete);
+let contentRouter = express.Router();
+contentRouter.get('/:userId/:dbId', content_get);
+contentRouter.post('/:userId/:dbId', content_post);
+contentRouter.put('/:userId/:dbId/:rowId', content_put);
+contentRouter.delete('/:userId/:dbId/:rowId', content_delete);
+app.use("/epdb/content",checkLoginStatus, checkDBaccess, contentRouter);
+
+// ============================================================
+// PLACEHOLDERS, muista toteuttaa nämä
+// ============================================================
+
+
+function checkLoginStatus(req, res, next) {
+    console.log("TOTEUTTAMATTA: checkLoginStatus");
+    return next();    
+}
+
+function checkDBaccess(req, res, next) {
+    console.log("TOTEUTTAMATTA: checkLoginStatus");
+    return next();    
+}
+
 
 
 // ============================================================
 // content routes
 // ============================================================
 
-
-function content_get(req, res) {
-
-    tänne tullessa voitava olettaa:
+/*
+    tänne tullessa oletetaan:
 	- käyttäjä logannut sisään
 	- käyttäjä saa lukea tietokantaa
+*/
+
+
+function content_get(req, res) {
     
     DBiface.getRows(req.params.dbId, req.params.userId, (err, dbRows) => {
 	if (err) { return res.status(200).json([]); }	
@@ -96,9 +116,9 @@ function content_get(req, res) {
 
 function content_delete(req, res) {
 
-    console.log(req.params.rowId)
+//    console.log(req.params.rowId)
 
-    DBiface.deleteRow(req.params.dbId, req.params.userId, req.params.rowId), (err) => {
+    DBiface.deleteRow(req.params.dbId, req.params.userId, req.params.rowId, (err) => {
 	if (err) { return res.status(404).json({msg:"row not found"}) }
 	return res.status(200).json([]);
     })
@@ -129,6 +149,8 @@ function content_put(req, res) {
     }) // getOneRow
 }
 
+// ################################################################################
+// EKASTA HAHMOTELMASTA, SIIVOTTAVAA/POISTETTAVAA KOODIA
 // ################################################################################
 
 // ============================================================
@@ -174,87 +196,11 @@ function DBfindUserByName(userName, readyFun) {
     }) // find
 }
 
-const tmpUserName = "se-ainut-käyttäjä";
-const tmpPassword = "password";
-DBfindUserByName(tmpUserName, function(err, userEntry) {
-
-    if (!userEntry) {
-	let tmpuser = new epdbUser( { userName: tmpUserName, isAdmin: true, passoword: tmpPassword });
-    
-	tmpuser.save(function(err, res) {
-	    if (err) throw err;
-	    console.log('tilapäiskäyttäjä '+res.userName+' luotu id:llä'+res._id);
-        }) // save
-
-    } // jos ei ole jo
-    else {
-	console.log("käyttäjän "+tmpUserName+" id on "+userEntry._id);
-    }
-}) // findByName
-
-
-
-dbTemplate2 = {
-    "fieldTypes": { "field1": "string", "field2": "enum2", "field3": "text", "field4": "number", "field5": "enum5"},
-    "enums": {"enum2": ["f2-enum1", "f2-enum2", "f2-enum3"],
-	      "enum5": ["f5-enum1", "f5-enum2", "f5-enum3"] 
-	     } 
-}; // templ
-
-
-
-
-DBiface.DBlistDBs( (dbNames) => {
-
-    if (dbNames.length>1) return([]);
-
-    let dbName = "Web Link Database";
-    db1 = mongooseCreateDatabase(
-	dbName,
-	dbTemplate2,
-	tmpuser);
-
-    // tämä on tilapäistä, siksi voi kutsua yhen
-    // rivin lisääjää monta kertaa ilman että nolottaa
-   
-        console.log("lisää roskaa ekaan kantaan valmiiksi");
-    for (let i=0; i<dbRows_tmp_pohja.length; i++) {
-	let rowContents = dbRows_tmp_pohja[i];
-	mongooseInsertRow(db1, rowContents, tmpuser.id);
-    }
-
-
-db2 = mongooseCreateDatabase(
-	"Web Link Database (2)",
-     dbTemplate2,
-    tmpuser);
-
-        console.log("lisää saman roskan tokaan kantaan valmiiksi");
-    for (let i=0; i<dbRows_tmp_pohja.length; i++) {
-	let rowContents = dbRows_tmp_pohja[i];
-	mongooseInsertRow(db2, rowContents, tmpuser.id);
-    }
-
-    
-} );
-
-console.log("KESKEN: nyt näkyy kaikki shared-by-another vaikka eikö ole omia?")
-
 
 
 // ============================================================
 // mongoose interface
 // ============================================================
-
-// https://coderwall.com/p/_g3x9q/how-to-check-if-javascript-object-is-empty
-function isEmpty(obj) {
-    for(let key in obj) {
-        if(obj.hasOwnProperty(key))
-            return false;
-    }
-    return true;
-}
-
 
 
 function mongooseInsertRow(dbSchema, rowContents, userId) {
@@ -420,6 +366,19 @@ function dbinfo_get(req, res) {
     }
 	  )}
 
+
+function register_post(req, res) {
+
+        console.log("TOTEUTTAMATTA: register_post");
+    return res.status(200).json({msg: "KESKEN"})
+}
+
+
+function logout_post(req, res) {
+
+        console.log("TOTEUTTAMATTA: logout_post");
+    return res.status(200).json({msg: "KESKEN"})
+}
 
 function login_post(req, res) {
 
