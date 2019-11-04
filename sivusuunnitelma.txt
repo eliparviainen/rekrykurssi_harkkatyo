@@ -1,0 +1,27 @@
+041119
+
+login/register
+
+
+
+vierailija
+
+- rekisteröidy (+loggaa sisään)
+- loggaa sisään
+
+- valihe (julkinen) kanta
+- kato (julkista) kantaa
+- vaiha järjestysfiltterit (paitsi julkisten käyttö)
+
+
+sisään logannut
+
+
+- loggaa ulos
+- kato/poista tiedot?
+
+- valihe kanta
+- luo kanta
+- kato kantaa
+- editoi kantaa
+- vaiha järjestysfiltterit (myös julkisten käyttö)

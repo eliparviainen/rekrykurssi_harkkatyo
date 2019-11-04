@@ -1,0 +1,60 @@
+
+28.10.2019
+
+TIETOKANTALELU
+========================================
+
+SISÄLTÖ
+
+käyttäjä voi käyttää (yksinkertasia) tietokantoja
+- kaikki käyttäjät näkee samat kannat
+- voi valita näkyykö ite syötetyt tiedot muille käyttäjille
+admin voi lisätä tietokantoja
+- rajatut tietotyypit, muutenkin hyvin perusperus
+
+
+TOIMINNOT
+
+käyttäjän näkymä:
+- näyttää rivit
+- lisää rivin
+- poistaa rivin
+- editoi (ite lisäämiään) tietoja
+- näyttää halutulla tavalla
+-- ryhmittelee valitun kentän mukaan (vain enum-kentät)
+-- ko. kentälle näyttää vain rivit joilla ryhmittelykentällä valittu arvo
+
+ylläpitäjän näkymä:
+- määrittelee custom-tietotyypin
+- lisää kentän tietokantaskeemaan
+- luo uuden kannan
+- poistoa tai editointia ei toteuteta, veisi liikaa aikaa
+
+TOTEUTUS
+
+käyttäjähallinta: tän viikon kurssiesimerkin mukanen
+
+frontend:
+- react 
+    "react": "^16.10.2"
+    "react-dom": "^16.10.2"
+
+tietokanta:
+- mongoDB v4.2.0, mongoose "^5.7.3",
+
+backend:
+- nodeJS v12.11.1
+- express 4.16.1
+- ehkä: "express-validator": "^6.2.0"
+
+alusta:
+- testataan vain chromessa
+- lokaalina (tai jossain kurssilla käytettävässä paikassa)
+
+AIKATAULU
+
+viikko 28.10.- backend toimimaan
+viikko 04.11.- käyttäjähallinta
+viikko 11.11.- datan validoinnit
+viikko 18.11.- frontendin ulkonäkö (muista responsiivisuus)
+viikko 25.11.- dokumentaatio
