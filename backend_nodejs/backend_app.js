@@ -12,6 +12,11 @@ let app = express();
 app.use(express.json());
 
 
+let verbose=true;
+function ifVerbose(msg) {
+    console.log(msg);
+}
+
 // ============================================================
 // mongoDB + mongoose
 // ============================================================
@@ -27,6 +32,7 @@ mongoose.connect(mongoDB, { useNewUrlParser: true, useUnifiedTopology: true });
 // databases needed for backend
 // ============================================================
 
+const DBiface = require('./epdb_dbinterface_mongoose');
 
 let epdbUserDef = new mongoose.Schema({
     userName : { type: String, required: true },
@@ -60,28 +66,41 @@ epdbSession = mongoose.model('epdbSession', epdbSessionDef );
 // routes
 // ============================================================
 
-console.log("HUOM ei ole ollenkaan /-reittiä");
+// routes check access based on user status (visitor, editor, owner)
+// access set by owner can restrict access to part of information, checked later
 
-app.get('/epdb/structure', dblist_get);
-app.get('/epdb/structure/:dbId', dbinfo_get);
-app.post('/epdb/structure/:userId', dblist_post);
+let visitorRouter = express.Router();
+visitorRouter.use("/epdb/visitor", checkSessionLife, visitorRouter);
 
-app.post('/epdb/signup', signup_post);
-app.post('/epdb/signin', signin_post);
-app.post('/epdb/signout', signout_post);
+visitorRouter.get('/list', dblist_get);
+visitorRouter.get('/list/:userId/:dbId', dbstructure_get);
+visitorRouter.get('/content/:userId/:dbId', content_get);
 
-let contentRouter = express.Router();
-contentRouter.get('/:userId/:dbId', content_get);
-contentRouter.post('/:userId/:dbId', content_post);
-contentRouter.put('/:userId/:dbId/:rowId', content_put);
-contentRouter.delete('/:userId/:dbId/:rowId', content_delete);
-app.use("/epdb/content",checkSigninStatus, checkDBaccess, contentRouter);
+visitorRouter.post('/signup', signup_post);
+visitorRouter.post('/signin', signin_post);
+
+let editorRouter = express.Router();
+app.use("/epdb/editor",checkSessionLife, checkSigninStatus, checkDBaccess, editorRouter);
+
+editorRouter.post('/content/:userId/:dbId', content_post);
+editorRouter.put('/content/:userId/:dbId/:rowId', content_put);
+editorRouter.delete('/content/:userId/:dbId/:rowId', content_delete);
+editorRouter.post('/signout', signout_post);
+
+let ownerRouter = express.Router();
+app.use("/epdb/owner",checkSessionLife, checkSigninStatus, checkDBaccess, checkOwnership, ownerRouter);
+ownerRouter.post('/list/:userId', dblist_post);
 
 // ============================================================
 // PLACEHOLDERS, muista toteuttaa nämä
 // ============================================================
 
-console.log("PUUTTUU: muista laittaa elinajan lisäys jonnekin");
+
+
+function checkSessionLife(req, res, next) {
+    console.log("TOTEUTTAMATTA: checkSessionLife");
+    return next();    
+}
 
 function checkSigninStatus(req, res, next) {
     console.log("TOTEUTTAMATTA: checkSigninStatus");
@@ -89,13 +108,26 @@ function checkSigninStatus(req, res, next) {
 }
 
 function checkDBaccess(req, res, next) {
-    console.log("TOTEUTTAMATTA: checkSigninStatus");
+    console.log("TOTEUTTAMATTA: checkDBaccess");
     return next();    
 }
+
+
+function checkOwnership(req, res, next) {
+    console.log("TOTEUTTAMATTA: checkOwnership");
+    return next();    
+}
+
+
 
 // ============================================================
 // errors
 // ============================================================
+
+function passOnError(res, err) {
+    console.log("virhekäsittelijä voisi sanoa jotain fiksumpaakin kuin server error");
+    return unknownError(res, err);
+}
 
 function unknownError(res, err) {
     if (err) { console.log("unknown error handler: ", err) }
@@ -112,9 +144,54 @@ function signUpError(res, err) {
     res.status(422).json({msg: "could not sign up"})
 }
 
-
 function userNameConflict(res, userName) {
-    return res.status(409).json({msg: "username "+userName+" taken"}) }
+    return res.status(409).json({msg: "username "+userName+" taken"}) 
+}
+
+// ============================================================
+// maintenance routes
+// ============================================================
+
+
+function dblist_get(req, res) {
+ifVerbose("entering dblist_get")
+
+    //  console.log("sending", { "title": dbTitle, "template": dbTemplate})
+
+    //    return (DBlistDBs(res));
+
+    console.log("kutsuttu dblist_get");
+
+    DBiface.listDBs(req.body.userId,
+		    (err, dbNames) => {
+			if (err) { return passOnError(res, err) }
+			//console.log(dbNames)
+			return res.status(200).json({ "dbNames": dbNames})
+		    });    
+}
+
+
+function dbstructure_get(req, res) {
+ifVerbose("entering dbstructure_get")
+
+    DBiface.getHeader(req.params.userId, req.params.dbId,
+		      (err, dbName, dbDescription, dbTemplate) => {
+			  if (err) { return passOnError(res, err) }
+			  return res.status(200).json({ "dbName": dbName,
+							"dbDescription": dbDescription,
+							"dbTemplate": dbTemplate});
+		      })
+}
+
+
+
+function dblist_post(req, res) {
+ifVerbose("entering dblist_post")
+
+    DBiface.create(req.params.userId, req.body, (err, dbId) => {
+	if (err) { return passOnError(res, err) }
+	return res.status(200).json({ dbId: dbId })
+    });
 }
 
 
@@ -125,17 +202,19 @@ function userNameConflict(res, userName) {
 
 
 function signup_post(req, res) {
+ifVerbose("entering signup_post")
+
 
     DBiface.findUserByName(req.body.userName, (err, user) => {
 
-	if (err) { return unknownError(res, err) }
+	if (err) { return passOnError(res, err) }
 	if (user) { return userNameConflict(res, user.userName) }
     
 	bcrypt.hash(req.body.password, 10, function(err,hash) {
 	    if (err) { return signupError(res, err) }
 	    let newUser = new epdbUser({userName: req.body.userName, password: hash})
 	    newUser.save( function(err,res) {
-		if (err) { return unknownError(res, err) }
+		if (err) { return passOnError(res, err) }
 		return res.status(200).json({userId: newUser._id})
 	    }) // save
 	}) // bcrypt		 
@@ -144,6 +223,8 @@ function signup_post(req, res) {
 
 
 function signin_post(req, res) {
+ifVerbose("entering signin_post")
+
 
     DBiface.findUserByName(req.body.userName, (err, user) => {
 	if (err) { return signInError(res, err) }
@@ -153,7 +234,7 @@ function signin_post(req, res) {
 	    if (err) { return signInError(res, err) }
 	    
 	    DBiface.findSessionByUID(user, (err, existingSessionID) => {
-		if (err) { return unknownError(res, err) }
+		if (err) { return passOnError(res, err) }
 		if (existingSessionID) {
 		    return res.status(200).json({userId: user._id, token: existingSession.token})
 		}
@@ -171,8 +252,8 @@ function signin_post(req, res) {
 		    token : newToken,
 		    livesUntil : Date.now + DEFAULT_TTL,
 		    signoutAfterMilliseconds : DEFAULT_TTL
-		}, (function(err, session) {
-		    if (err) { return unknownError(res, err) }
+		}, function(err, session) {
+		    if (err) { return passOnError(res, err) }
 		    return res.status(200).json({userId: user._id, token: session.token})
 		}) // newSession
 	    }) // find session by userId
@@ -183,17 +264,19 @@ function signin_post(req, res) {
 
     
 function signout_post(req, res) {
+    ifVerbose("entering signout_post")
 
     DBiface.findSessionByUID(user, (err, session) => {
-	if (err) { return unknownError(res, err) }
+	if (err) { return passOnError(res, err) }
 	if (existingSessionID) {
 	    DBiface.deleteSession(session, (err) => {
-		if (err) { return unknownError(res, err) }
+		if (err) { return passOnError(res, err) }
 		return res.status(200).json({msg: "signed out"})
 	    }) // delete
-	}
+	} // if
 	return res.status(200).json({msg: "signed out"})
-    }
+    }) // find
+}
 
 
 
@@ -201,14 +284,10 @@ function signout_post(req, res) {
 // content routes
 // ============================================================
 
-/*
-    tänne tullessa oletetaan:
-	- käyttäjä logannut sisään
-	- käyttäjä saa lukea tietokantaa
-*/
-
-
+			     
 function content_get(req, res) {
+ifVerbose("entering content_get")
+
     
     DBiface.getRows(req.params.dbId, req.params.userId, (err, dbRows) => {
 	if (err) { return res.status(200).json([]); }	
@@ -218,6 +297,8 @@ function content_get(req, res) {
 
 
 function content_delete(req, res) {
+ifVerbose("entering content_delete")
+
 
 //    console.log(req.params.rowId)
 
@@ -229,6 +310,8 @@ function content_delete(req, res) {
 
 
 function content_post(req, res) {
+ifVerbose("entering content_post")
+
     
     let newRow = DBiface.newRow(req.params.dbId, req.params.userId, req.body);
 
@@ -240,6 +323,8 @@ function content_post(req, res) {
 
 		     
 function content_put(req, res) {
+ifVerbose("entering content_put")
+
 
     DBiface.getOneRow(req.params.dbId, req.params.userId, req.params.rowId, (err, oldRow) => {
 	if (err) { return res.status(409).json({msg: "row not saved"}); }
@@ -252,237 +337,18 @@ function content_put(req, res) {
     }) // getOneRow
 }
 
-// ################################################################################
-// EKASTA HAHMOTELMASTA, SIIVOTTAVAA/POISTETTAVAA KOODIA
-// ################################################################################
 
 // ============================================================
-// database interface
+// create server
 // ============================================================
 
 
-//const DBiface = require('./epdb_dbinterface_feikki');
-const DBiface = require('./epdb_dbinterface_mongoose');
-
-
-
-
-// ========================================
-// feikkikannat
-
-    
-    function newSession(sessionData, sendFun) {
-	let newSession = new epdbSession(sessionData);
-	newSession.save(sendFun);
-    }
-
-    
-function DBfindSessionByUID(userId, readyFun) {
-    epdbSession.find({userId: userId}, (err, sessionEntry) => {
-
-	if (!sessionEntry) { readyFun(err,[]) }
-	if (sessionEntry.length>1) {
-	    console.log("PÄÄTÄ JO: saako samalla käyttäjällä olla auki useampi sessio?");
-	}
-	sessionEntry = sessionEntry[0];
-	
-	    readyFun(err,sessionEntry)	
-    }) // find
-}
-
-
-function DBfindUserByName(userName, readyFun) {
-    epdbUser.find({userName: userName}, (err, userEntry) => {
-
-	console.log("DBfindUserByName ettii käyttäjää ",userName)
-	if (!userEntry) { readyFun(err,[]) }
-	
-	if (userEntry.length>1) {
-	    console.log("PUUTTUU: ei saisi olla useampaa samannimistä käyttäjää (feikkikannassa voi olla)");
-	}
-	userEntry = userEntry[0];
-	
-	readyFun(err,userEntry._id)	
-    }) // find
-}
-
-
-
-// ============================================================
-// mongoose interface
-// ============================================================
-
-
-function mongooseInsertRow(dbSchema, rowContents, userId) {
-   
-    let modelName = "schemaFor"+dbSchema.id;
-    let schemaDefJson = mongooseJsonFromTemplate(dbSchema.dbTemplate);
-    let newDB = mongoose.model(modelName, schemaDefJson);
-
-    //console.log('kanta '+dbSchema.dbName+' luotu (jos ei sitä ollut jo)');
-
-	// 
-//    LISÄÄ TÄSSÄ ROSKAA KANTAAN    (tapahtuuko kanta sillon mongossa?)
-
-
-    rowContents = epdbAddDefaultFields(rowContents, userId)
-	
-    // pitäisi vastata new Luokka -komentoa?
-	//newRow = Object.create(newDB); // , rowContents
-    newRow = new newDB(rowContents);
-
-    //let teese = false;
-        let teese = true;
-    if (teese) {
-    //	TARKISTA RIVIN MUOTO, LAITTAA NYT SUORAAN ROSKAKANNASTA, ERI KENTÄT
-    newRow.save(function(err, res) {
-	if (err) throw err;
-	//console.log('rivi '+newRow+' lisätty');
-	console.log('rivi lisätty kantaan '+modelName);
-    });
-
-    }
-
-    // muuten valittaa että on jo
-    mongoose.deleteModel(modelName);
-    //	console.log("rivi "+i+" ",newRow)
-}
-
-    
-function mongooseCreateDatabase(dbName, dbTemplate, userEntry) {
-
-    // edellä pitää olla tarkistettu:
-    // - tietokantaa ei ennestään ole
-    // - käyttäjällä on lupa luoda kantoja
-
-    
-let dbSchema = new epdbDatabaseSchema(
-    {
-	dbName: dbName,	
-	dbTemplate: dbTemplate,
-	_creator: userEntry
-    }
-);
-dbSchema.save(function(err, res) {
-                if (err) throw err;
-                console.log('kanta '+res.dbName+' lisätty listaan');
-        });
-
-//console.log(schemaDefJson)
-
-    return(dbSchema) //, modelName: modelName});
-}
-
-function epdbAddDefaultFields(record, userId) {
-    record["_timestamp"] = Date.now();
-    record["_owner"] = userId;
-    console.log("KESKEN: _isPublic ei riitä julkisuusmekanismiksi (private,shared,moderator-locked")
-    record["_isPublic"] = true;
-
-    return(record)
-}
-    
-function mongooseJsonFromTemplate(templateForAddingDB) {
-let schemaDefJson = {};
-let enumTypeList = [];
-for (let fieldname in templateForAddingDB.enums) { enumTypeList.push(fieldname) };
-//console.log(enumTypeList)
-//console.log(enumTypeList.includes("enum2"))
-schemaDefJson["_timestamp"] = { type: Date, default: Date.now() };
-schemaDefJson["_owner"] = { type: mongoose.Schema.Types.ObjectId, ref: 'epdbUser', required: true };
-schemaDefJson["_isPublic"] =  { type: Boolean, default: false };
-
-for (let fieldname in templateForAddingDB.fieldTypes) {
-
-    // enumTypeList.includes(templateForAddingDB.fieldTypes[fieldname])) {
-    let enumInd = enumTypeList.indexOf(templateForAddingDB.fieldTypes[fieldname]);
-    if (enumInd>=0) {
-	schemaDefJson[fieldname] = { type: String, enum: templateForAddingDB.enums[enumTypeList[enumInd]] };
-
-    } else {
-	switch(templateForAddingDB.fieldTypes[fieldname]) {
-	case "text":
-	case "string":
-	    schemaDefJson[fieldname] = { type: String };
-	    break;
-	case "URL":
-	    console.log("KESKEN: joko frontendissä on URL-render?");
-	    // tarttee: npm install mongoose-type-url
-	    schemaDefJson[fieldname] = { type: mongoose.SchemaTypes.Url };
-	    break;
-	case "number":
-	    schemaDefJson[fieldname] = { type: Number };
-	    break;
-	}
-    }
-//    schemaDefJson[fieldname] = 
-}
-//    console.log(schemaDefJson)
-    return(schemaDefJson);
-}
-
-
-
-// ============================================================
-// HTTP requests
-// ============================================================
-
-
-
-//app.put('/epdb/meta/:userId', dblist_put);
-function dblist_post(req, res) {
-  
-    console.log("MUISTA: kannat tunnistetaan nimillä kun en jaksa päivittää vanhaa koodia, nimien oltava uniikkeja");
-
-    console.log("BE dblistpost ",req.body)
-    DBiface.DBcreate(req.params.userId, req.body, () => {
-	return res.status(200).json({ "msg": "luotu uusi kanta"})
-    });
-    /*
-    // nää olis parempi kirjottaa .then-ketjuksi mutta pistän toimimaan ensin edes jotenkin
-    DBiface.DBcreate(req.params.userId, req.body, () => {
-
-	console.log("create sendfun");
-	DBiface.DBlistDBs(
-	    (dbNames) => {
-		console.log("create->dblists sendfun");
-	    console.log(dbNames)
-		return res.status(200).json({ "dbNames": dbNames})
-	    }
-	);
-    });
-*/
-}
-
-function dblist_get(req, res) {
-    //  console.log("sending", { "title": dbTitle, "template": dbTemplate})
-
-    //    return (DBlistDBs(res));
-
-    console.log("kutsuttu dblist_get");
-    
-    DBiface.DBlistDBs(
-	(dbNames) => {
-	    console.log(dbNames)
-	return res.status(200).json({ "dbNames": dbNames})
-	}
-    );
-}
-
-
-function dbinfo_get(req, res) {
-    DBiface.DBinfo(req.params.dbId, (dbTitle, dbTemplate) => {
-	return res.status(200).json({ "dbTitle": req.params.dbId+"/"+dbTitle, "dbTemplate": dbTemplate});
-    }
-	  )}
-
-// ============================================================
-
-
+			     /*
 app.get('/', function (req, res) {
-        res.send("Hello World! -- muista laittaa /-reitti myös varsinaiseen serveriin");
+        res.send("Hello World! -- xxxx");
 
 });
+*/
 
 
 let sslOptions = {

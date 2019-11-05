@@ -1,0 +1,195 @@
+			      
+body {
+    background-color: #f4faff; 
+}
+
+/* */
+.App {
+    padding: 1em;
+ }
+
+// ============================================================
+// SIIVOAMATTA
+// ============================================================
+
+.KESKEN {
+    font-weight: bold;
+    font-size: 1em;
+    font-style: italic;
+    color: magenta;
+}
+
+.KESKENbox {
+    background-color: white;
+    float: left;
+    width: 100px;
+    margin-left: 50px;
+    margin-right: 20px;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    padding: 0.25em;
+
+    border-style: solid;
+    border-width: 2px;
+    border-radius: 2px;
+    border-color: magenta;
+
+}
+
+
+
+.MainLayout {
+    padding-top: 1em;
+    background-color: lightcyan;
+}
+
+.openCloseArea {
+    background-color: white;
+    color: black;
+    margin-left: 50px;
+    margin-right: 20px;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    padding: 0.25em;
+
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 2px;
+    border-color: darkgray;
+
+}
+
+
+.openCloseAreaLabel, .areaLabel {
+    background-color: lightgray;
+    color: black;
+    margin-left: 20px;
+    margin-right: 20px;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 5px;
+    border-color: darkgray;
+    padding: 10px;
+
+    font-weight: bold;
+}
+
+.groupTitle {
+    background-color: lighcyan;
+    color: black;
+    margin-left: 0px;
+    margin-right: 0px;
+    margin-top: 0.2em;
+    margin-bottom: 0.2em;
+
+    border-style: none;
+    border-width: 1px;
+    border-radius: 0px;
+    border-color: darkgray;
+    padding: 10px;
+    font-size: 1em;
+    font-weight: bold;
+    
+}
+
+
+.listArea {
+    background-color: lightcyan;
+    color: black;
+    margin-left: 20px;
+    margin-right: 20px;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+
+    //margin-top: 20px;
+    //margin-bottom: 50px;
+    padding: 0px;
+
+}
+
+.groupContentsBox {
+    background-color: white;
+    color: black;
+    margin-left: 50px;
+    margin-right: 20px;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+
+    //margin-top: 20px;
+    //margin-bottom: 50px;
+    padding: 0px;
+
+}
+
+
+#AreaCreate, #AreaSort {
+}
+
+//#ListShow {}
+
+.openCloseTriangle {
+    float: right;
+    font-size: 1.2em;
+}
+
+.editField {
+    margin-bottom: 0.5em;
+}
+
+.editFieldTitle {
+    color: gray;
+    font-style: italic;
+    font-weight: normal;
+    font-size: 0.6em;
+}
+
+
+
+.wideElemsBox, .narrowElemsBox {
+    float: left;
+    color: black;
+    padding: 5px;
+
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 0px;
+    border-color: magenta;
+
+}
+
+.button {
+    font-style: normal;
+    font-weight: normal;
+    height: 1.5em;
+    background-color: blue;
+    text-align: center;
+    border-radius: 5px;
+    color: white;
+    margin: 2px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+
+.removeConfirm {
+    border-style: solid;
+    border-color: darkred;
+    border-radius: 4px;
+    background-color: yellow;
+    WebkitFilter:"drop-shadow(0px 0px 5px #666)";
+    filter: "drop-shadow(0px 0px 5px #666)";
+    padding: 1em;
+}
+
+.sharingInfo {
+        color: gray;
+    font-style: italic;
+    font-weight: normal;
+    font-size: 0.6em;
+    text-align: center;
+}
