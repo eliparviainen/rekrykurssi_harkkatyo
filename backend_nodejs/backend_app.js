@@ -70,7 +70,7 @@ epdbSession = mongoose.model('epdbSession', epdbSessionDef );
 // access set by owner can restrict access to part of information, checked later
 
 let visitorRouter = express.Router();
-visitorRouter.use("/epdb/visitor", checkSessionLife, visitorRouter);
+visitorRouter.use("/epdb/visitor", visitorRouter);
 
 visitorRouter.get('/list', dblist_get);
 visitorRouter.get('/list/:userId/:dbId', dbstructure_get);

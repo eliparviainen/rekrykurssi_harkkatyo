@@ -105,18 +105,47 @@ class ContentsArea extends OpenCloseArea {
 
 
 class LoginPage extends React.Component {
+    
     render() {
+	let buttonName = (this.props.action==="signup")?"Sign up":"Sign in";
+	let buttonFun = (this.props.action==="signup")?this.props.appFuns.finalizeSignUp:this.props.appFuns.finalizeSignIn;
 	return(
-	    <div> LoginPage </div>
+		<div>
+		LoginPage {this.props.action} = {buttonName}
+		<div className="button" onClick={buttonFun} style={{width:"10em"}}>{buttonName}</div>
+	    </div>
 	)
     }   
 }
 
 
 class NavBar extends React.Component {
+
+    signInOptions = () => {
+	if (this.props.appState.userRole === "visitor") {
+	    return(<span>
+		   <span className="navitem" onClick={this.props.appFuns.initiateSignUp}>Sign-up</span>
+		   <span className="navitem" onClick={this.props.appFuns.initiateSignIn}>Sign-in</span>		
+		   </span>)
+	} else {
+	    return(
+		   <span className="navitem" onClick={this.props.appFuns.initiateSignOut}>Sign-out</span>
+		   )
+	    
+	}
+    }
     render() {
-	return(
-	    <div> NavBar </div>
+	
+		return(
+			<div>
+			<div className="pagetop">
+		<span className="logo">DDT</span> 
+		<span className="tagline">Databases for Daily Tasks</span>
+			{this.signInOptions()}
+			<br/>
+			</div>
+		</div>
+		
 	)
     }   
 }
@@ -142,8 +171,17 @@ class App extends React.Component {
 
         //======================================================================
     appToBrowseState = () => { this.setState({pageState: "browse"}) }
-    appToSignupState = () => { this.setState({pageState: "signup"}) }
-    appToSigninState = () => { this.setState({pageState: "signin"}) }
+    appToSignUpState = () => { this.setState({pageState: "signup"}) }
+    appToSignInState = () => { this.setState({pageState: "signin"}) }
+
+
+    userToVisitor = () => { this.setState({userRole: "visitor",
+					   userId: "",
+					   userName: "",
+					   sessionToken: "",
+					  }) }
+    userToEditor = () => { this.setState({userRole: "editor"}) }
+    userToOwner = () => { this.setState({userRole: "owner"}) }
 
 
 
@@ -207,17 +245,17 @@ class App extends React.Component {
     
     //======================================================================
     
-    handleSignUp = (userName, password) => {
+    initiateSignUp = () => {
 	console.log("KESKEN: signup");
-	this.handleSignIn(userName, password);
+	this.appToSignUpState();
     }
 
-    handleSignIn = (userName, password) => {
+    initiateSignIn = () => {
 	console.log("KESKEN: signin");
-	this.appToBrowseState();
+	this.appToSignInState();
     }
 
-    handleSignOut = () => {
+    initiateSignOut = () => {
 	console.log("KESKEN: signout");
 
 	/*
@@ -225,22 +263,30 @@ class App extends React.Component {
 	liian mutkikasta valvoa frontendissä tietokantaan pääsyä,
 	pyydä BE:ltä uusi tilanne (esim nykykanta voi olla täysin kielletty tai osin auki nyt)
 */
-	
-	this.setState({
-	    userId: "",
-	    userName: "",
-	    sessionToken: "",
-	    userRole: "visitor",
-	})
 
-	
+	this.userToVisitor();	
+	this.appToBrowseState();
+    }
+
+
+    finalizeSignUp = (userName, password) => {
+	console.log("KESKEN: signup");
+	this.finalizeSignIn(userName, password);
+    }
+
+    finalizeSignIn = (userName, password) => {
+	console.log("KESKEN: signin");
+	this.userToEditor();
+	console.log("KESKEN: toteuta editor/owner-valinta tietokantaa valitessa")
 	this.appToBrowseState();
     }
 
     render() {
-	const functionList = {handleSignUp:this.handleSignUp,
-			      handleSignIn:this.handleSignIn,
-			      handleSignOut:this.handleSignOut,
+	const functionList = {initiateSignUp:this.initiateSignUp,
+			      initiateSignIn:this.initiateSignIn,
+			      initiateSignOut:this.initiateSignOut,
+			      finalizeSignUp:this.finalizeSignUp,
+			      finalizeSignIn:this.finalizeSignIn,
 			     };
 
 	switch (this.state.pageState) {

@@ -1,8 +1,8 @@
     
 module.exports.newSession = function (sessionData, sendFun) {
-	let newSession = new epdbSession(sessionData);
-	newSession.save(sendFun);
-    }
+    let newSession = new epdbSession(sessionData);
+    newSession.save(sendFun);
+}
 
     
 module.exports.findSessionByUID = function(userId, readyFun) {
@@ -14,7 +14,7 @@ module.exports.findSessionByUID = function(userId, readyFun) {
 	}
 	sessionEntry = sessionEntry[0];
 	
-	    readyFun(err,sessionEntry)	
+	readyFun(err,sessionEntry)	
     }) // find
 }
 
@@ -23,10 +23,13 @@ module.exports.findUserByName = function(userName, readyFun) {
     epdbUser.find({userName: userName}, (err, userEntry) => {
 
 	console.log("DBfindUserByName ettii käyttäjää ",userName)
+	
 	if (!userEntry) { readyFun(err,[]) }
 	
 	if (userEntry.length>1) {
 	    console.log("PUUTTUU: ei saisi olla useampaa samannimistä käyttäjää (feikkikannassa voi olla)");
+	    console.log("palauta järkevä virhe, muoto=",err)
+	    readyFun(err,[]) 
 	}
 	userEntry = userEntry[0];
 	
