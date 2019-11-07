@@ -2,6 +2,14 @@ import React from 'react';
 import './App.css';
 import OpenCloseArea from './comps/OpenCloseArea';
 
+import AppBar from '@material-ui/core/AppBar'
+import Toolbar from '@material-ui/core/Toolbar'
+import Typography from '@material-ui/core/Typography'
+//import List from '@material-ui/core/List'
+//import ListItem from '@material-ui/core/ListItem'
+//import ListItemText from '@material-ui/core/ListItemText'
+import Button from '@material-ui/core/Button'
+
 //import MainLayout from './comps/MainLayout';
 //import Login from './comps/Login';
 //import StateHelper from './comps/StateHelper';
@@ -104,6 +112,10 @@ class ContentsArea extends OpenCloseArea {
 }
 
 
+
+
+
+
 class LoginPage extends React.Component {
     
     render() {
@@ -112,7 +124,9 @@ class LoginPage extends React.Component {
 	return(
 		<div>
 		LoginPage {this.props.action} = {buttonName}
+	    <Typography>
 		<div className="button" onClick={buttonFun} style={{width:"10em"}}>{buttonName}</div>
+		</Typography>
 	    </div>
 	)
     }   
@@ -123,29 +137,33 @@ class NavBar extends React.Component {
 
     signInOptions = () => {
 	if (this.props.appState.userRole === "visitor") {
-	    return(<span>
-		   <span className="navitem" onClick={this.props.appFuns.initiateSignUp}>Sign-up</span>
-		   <span className="navitem" onClick={this.props.appFuns.initiateSignIn}>Sign-in</span>		
-		   </span>)
+
+	    return(<div>
+		   <Button color="inherit" onClick={this.props.appFuns.initiateSignUp}>Sign-up</Button>
+		   <Button color="inherit" onClick={this.props.appFuns.initiateSignIn}>Sign-in</Button>
+		   </div>
+		  )
+
 	} else {
 	    return(
-		   <span className="navitem" onClick={this.props.appFuns.initiateSignOut}>Sign-out</span>
+		    <Button color="inherit" onClick={this.props.appFuns.initiateSignOut}>Sign-out</Button>
 		   )
 	    
 	}
     }
     render() {
-	
-		return(
-			<div>
-			<div className="pagetop">
+	return(
+		<div>
+		<AppBar position="static">
+		<Toolbar>
+                <Typography type="title" style={{ flex: 1 }}>
 		<span className="logo">DDT</span> 
-		<span className="tagline">Databases for Daily Tasks</span>
-			{this.signInOptions()}
-			<br/>
-			</div>
-		</div>
-		
+		<span>Databases for Daily Tasks</span>
+		</Typography>		
+		{this.signInOptions()}	           
+            </Toolbar>
+        </AppBar>
+        </div>
 	)
     }   
 }
@@ -246,12 +264,10 @@ class App extends React.Component {
     //======================================================================
     
     initiateSignUp = () => {
-	console.log("KESKEN: signup");
 	this.appToSignUpState();
     }
 
     initiateSignIn = () => {
-	console.log("KESKEN: signin");
 	this.appToSignInState();
     }
 

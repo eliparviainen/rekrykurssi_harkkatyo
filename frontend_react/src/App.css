@@ -8,6 +8,50 @@ body {
     padding: 1em;
  }
 
+.pagetop {
+    margin-bottom: 1em;
+}
+
+.logo {
+    margin-right: 0.5em;
+    font-weight: bold;
+    font-size: 2em;
+}
+
+.tagline {
+    font-weight: normal;
+    font-size: 1em;
+    color: darkgreen;
+}
+
+.navitem {
+    .position: relative;
+    float:right;
+/*    margin: 0.5em;  */
+}
+
+.navitem:hover, .navitem:active {
+    color: darkblue
+}
+
+
+
+.button {
+    width: 5em;
+    font-style: normal;
+    font-weight: normal;
+    height: 1.5em;
+    background-color: darkblue;
+    text-align: center;
+    border-radius: 5px;
+    color: white;
+    margin: 4px;
+    padding-top: 7px;
+    padding-bottom: 5px;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
 // ============================================================
 // SIIVOAMATTA
 // ============================================================
@@ -158,21 +202,6 @@ body {
     border-radius: 0px;
     border-color: magenta;
 
-}
-
-.button {
-    font-style: normal;
-    font-weight: normal;
-    height: 1.5em;
-    background-color: blue;
-    text-align: center;
-    border-radius: 5px;
-    color: white;
-    margin: 2px;
-    padding-top: 5px;
-    padding-bottom: 5px;
-    padding-left: 20px;
-    padding-right: 20px;
 }
 
 
