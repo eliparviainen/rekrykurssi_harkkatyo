@@ -9,6 +9,10 @@ import Typography from '@material-ui/core/Typography'
 //import ListItem from '@material-ui/core/ListItem'
 //import ListItemText from '@material-ui/core/ListItemText'
 import Button from '@material-ui/core/Button'
+import InputLabel from '@material-ui/core/InputLabel'
+import Input from '@material-ui/core/Input'
+import Box from '@material-ui/core/Box'
+
 
 //import MainLayout from './comps/MainLayout';
 //import Login from './comps/Login';
@@ -112,21 +116,47 @@ class ContentsArea extends OpenCloseArea {
 }
 
 
-
-
-
-
 class LoginPage extends React.Component {
+
+    constructor(props) {
+	super(props);
+	this.state = {userName: "", password: "",buttonDisabled:true}
+    }
+  
+    change = (event) => {
+        let state = this.state;
+        state[event.target.name] = event.target.value;
+        this.setState(state);
+	let hasData = (this.state.userName !== "" && this.state.password !== "");
+	this.setState({buttonDisabled: !hasData});
+    }
+
+
     
     render() {
 	let buttonName = (this.props.action==="signup")?"Sign up":"Sign in";
 	let buttonFun = (this.props.action==="signup")?this.props.appFuns.finalizeSignUp:this.props.appFuns.finalizeSignIn;
 	return(
 		<div>
-		LoginPage {this.props.action} = {buttonName}
-	    <Typography>
-		<div className="button" onClick={buttonFun} style={{width:"10em"}}>{buttonName}</div>
+		<Typography component="div" align="center">
+		<Box m={2}>
+		<InputLabel>Username</InputLabel>
+			    	<Box m={1}>
+		<Input m={2} type="string" margin="none" name="userName" value={this.state.userName} onChange={this.change}></Input>
+		</Box>		</Box>
+
+		
+	    	<Box m={2}>
+		<InputLabel>Password</InputLabel>
+					    	<Box m={1}>
+		<Input type="password" margin="dense" name="password" value={this.state.password} onChange={this.change}></Input>
+		</Box>		</Box>
+	    
+			    	<Box m={2}>
+		<Button disabled={this.state.buttonDisabled}color="primary" variant="outlined" onClick={()=>{buttonFun(this.state.userName, this.state.password)}}>{buttonName}</Button>
+		</Box>
 		</Typography>
+
 	    </div>
 	)
     }   
@@ -205,7 +235,8 @@ class App extends React.Component {
 
   //======================================================================
     fetchAndProcess = (path, req, logname, gotDataFun) => {
-	
+
+	console.log("fetch req",req)
 	if (req.mode==="cors")
 	{
 	    console.log("fetchAndProcess: "+logname+" HUOM cors-moodi päällä");
@@ -213,15 +244,24 @@ class App extends React.Component {
 
 	fetch(path,req)          
             .then( (response) => {
-                if (response.ok) {
+
+		switch (response.status) {
+		case 200:
                     response.json().then( (data) => { gotDataFun(data) } )
-			.catch( (error) => { console.log(logname+": Failed to handle JSON: "+error); }
-			);
-                } // if ok
-                else { console.log(logname+": Server says non-ok status: "+response.status); }
+			.catch( (error) => { console.log(logname+": Failed to handle JSON: "+error); })
+		    break
+		case 409:
+		    console.log(logname+": Server says non-ok status: "+response.status);
+		    gotDataFun([], 409)
+		    break
+		default:
+		    gotDataFun([], error)
+		    break;
+		}
             }) // then		 
             .catch( (error) =>
-                    { console.log(logname+": Server says error: "+error); }
+                    { console.log(logname+": Server says error: "+error);
+		    }
                   ); 
     }
 
@@ -252,12 +292,15 @@ class App extends React.Component {
 	let req = this.makeReq();
 	req["method"]="PUT";
 	req["body"]=JSON.stringify(info);
+	return req
     }
 
     makePostReq = (info) => {
+	console.log("makePostReq ",info)
 	let req = this.makeReq();
 	req["method"]="POST";
 	req["body"]=JSON.stringify(info);
+	return req
     }
 
     
@@ -285,17 +328,44 @@ class App extends React.Component {
     }
 
 
-    finalizeSignUp = (userName, password) => {
-	console.log("KESKEN: signup");
-	this.finalizeSignIn(userName, password);
+    finalizeSignUp = (userName, password) => {	
+        let req = this.makePostReq({"userName": userName, "password":password});
+
+	console.log("finalizeSignUp, req", req);
+	this.fetchAndProcess('/epdb/visitor/signup', req, "App.js/finalizeSignIn",
+			     (data, status)=>{
+				 if (!status) {
+				 console.log("finalizeSignUp onnistui, logataan sisään");
+				     this.finalizeSignIn(userName, password);
+				 } else {
+				     console.log("PUUTTUU: finalizeSignUp epäonnistui, sano käyttäjälle jotain tai tee jotain järkevää");
+				     KESKEN
+				 }
+			     }) // fetch	
     }
 
     finalizeSignIn = (userName, password) => {
-	console.log("KESKEN: signin");
-	this.userToEditor();
-	console.log("KESKEN: toteuta editor/owner-valinta tietokantaa valitessa")
-	this.appToBrowseState();
-    }
+
+        let req = this.makePostReq({"userName": userName, "password":password});
+
+	console.log("finalizeSignIn, req", req);
+	this.fetchAndProcess('/epdb/visitor/signin', req, "App.js/finalizeSignIn",
+			     (data)=>{
+				 this.getDBlist();
+				 this.setState({userId:data.userId, sessionToken:data.sessionToken})
+				 this.userToEditor();
+				 console.log("KESKEN: toteuta editor/owner-valinta tietokantaa valitessa")
+				 this.appToBrowseState();
+
+				 console.log("signed in "+this.state.userName+", id="+this.state.userId+"m token="+this.state.sessionToken)
+			     }) // fetch
+    } 
+
+
+
+getDBlist = () => {
+    console.log("KESKEN: getDBlist");
+}
 
     render() {
 	const functionList = {initiateSignUp:this.initiateSignUp,
@@ -493,32 +563,6 @@ class App extends React.Component {
 	});
 	//console.log("dbid ",this.state.dbId);
 	
-    }
-
-    //======================================================================
-    // tämä outo välivaihe tulee siitä että ensin alhaalta
-    // kutsuttiin suoraan erikseen, parempi olisi yhistää
-    handleLogin = (userName, dbId) => {
-	console.log("KESKEN: poista dbvalinta loginista");
-
-        let req = {
-            method: "POST",
-            mode: "cors",
-            headers: {"Content-type":"application/json"},
-	    body: JSON.stringify({userName: userName})
-        }
-
-
-	console.log("FE, App, login ")
-	this.fetchAndProcess('/epdb/login', req, "App.js/login", (data)=>{
-	    this.getDBlist();
-
-	
-	    this.setUserIdentity(userName, data.userId);
-	this.chooseDB(dbId);
-	});
-
-
     }
 
         //======================================================================

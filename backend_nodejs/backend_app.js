@@ -70,7 +70,7 @@ epdbSession = mongoose.model('epdbSession', epdbSessionDef );
 // access set by owner can restrict access to part of information, checked later
 
 let visitorRouter = express.Router();
-visitorRouter.use("/epdb/visitor", visitorRouter);
+app.use("/epdb/visitor", visitorRouter);
 
 visitorRouter.get('/list', dblist_get);
 visitorRouter.get('/list/:userId/:dbId', dbstructure_get);
@@ -200,23 +200,36 @@ ifVerbose("entering dblist_post")
 // signin routes
 // ============================================================
 
+function isEmpty(obj) {
+    for(var key in obj) {
+        if(obj.hasOwnProperty(key))
+            return false;
+    }
+    return true;
+}
 
 function signup_post(req, res) {
 ifVerbose("entering signup_post")
 
 
     DBiface.findUserByName(req.body.userName, (err, user) => {
-
+	console.log("findUserByName palasi");
+	
 	if (err) { return passOnError(res, err) }
-	if (user) { return userNameConflict(res, user.userName) }
-    
+
+
+	console.log ("user=",user)
+	if (!isEmpty(user)) { return userNameConflict(res, user.userName) }
+
+	console.log ("onko täällä?")
 	bcrypt.hash(req.body.password, 10, function(err,hash) {
 	    if (err) { return signupError(res, err) }
-	    let newUser = new epdbUser({userName: req.body.userName, password: hash})
-	    newUser.save( function(err,res) {
-		if (err) { return passOnError(res, err) }
-		return res.status(200).json({userId: newUser._id})
-	    }) // save
+
+	    DBiface.createUser(req.body.userName, hash, 
+			       function(err, newUser) {
+				   if (err) { return passOnError(res, err) }
+				   return res.status(200).json({userId: newUser._id})
+			       }) // create	    	    
 	}) // bcrypt		 
     }) // find by name
 }
@@ -229,6 +242,7 @@ ifVerbose("entering signin_post")
     DBiface.findUserByName(req.body.userName, (err, user) => {
 	if (err) { return signInError(res, err) }
 
+	console.log("signin:in löytämät käyttäjätiedot",user)
 	bcrypt.compare(req.body.password, user.password, function(err, success) {
 
 	    if (err) { return signInError(res, err) }
@@ -236,7 +250,7 @@ ifVerbose("entering signin_post")
 	    DBiface.findSessionByUID(user, (err, existingSessionID) => {
 		if (err) { return passOnError(res, err) }
 		if (existingSessionID) {
-		    return res.status(200).json({userId: user._id, token: existingSession.token})
+		    return res.status(200).json({userId: user._id, sessionToken: existingSession.token})
 		}
 		
 		console.log("POISTA: debugviestien siistimiseksi token vain 16 merkkiä");
@@ -250,7 +264,7 @@ ifVerbose("entering signin_post")
 		DBiface.newSession({
 		    userId : user,
 		    token : newToken,
-		    livesUntil : Date.now + DEFAULT_TTL,
+		    livesUntil : Date.now() + DEFAULT_TTL,
 		    signoutAfterMilliseconds : DEFAULT_TTL
 		}, function(err, session) {
 		    if (err) { return passOnError(res, err) }
@@ -361,7 +375,7 @@ https.createServer(sslOptions, app).listen(1111,
 					   function()
 {
     //let hostport = app.address().port;
-	console.log("Express server is listening -- HTTPS, ite allekirjotettu sertifikaatti");
+	console.log("Express server is listening at 1111 -- HTTPS, ite allekirjotettu sertifikaatti");
 //	console.log("Port is: %s", hostport);
 }
 					  )

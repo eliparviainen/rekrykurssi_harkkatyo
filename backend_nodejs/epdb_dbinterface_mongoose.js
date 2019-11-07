@@ -1,4 +1,10 @@
-    
+module.exports.createUser = function (userName, password, readyFun) {
+    let newUser = new epdbUser({userName: userName, password: password})
+    return newUser.save(readyFun);
+}
+
+
+
 module.exports.newSession = function (sessionData, sendFun) {
     let newSession = new epdbSession(sessionData);
     newSession.save(sendFun);
@@ -8,13 +14,13 @@ module.exports.newSession = function (sessionData, sendFun) {
 module.exports.findSessionByUID = function(userId, readyFun) {
     epdbSession.find({userId: userId}, (err, sessionEntry) => {
 
-	if (!sessionEntry) { readyFun(err,[]) }
+	if (!sessionEntry) { return readyFun(err,[]) }
 	if (sessionEntry.length>1) {
 	    console.log("PÄÄTÄ JO: saako samalla käyttäjällä olla auki useampi sessio?");
 	}
 	sessionEntry = sessionEntry[0];
 	
-	readyFun(err,sessionEntry)	
+	return readyFun(err,sessionEntry)	
     }) // find
 }
 
@@ -23,17 +29,18 @@ module.exports.findUserByName = function(userName, readyFun) {
     epdbUser.find({userName: userName}, (err, userEntry) => {
 
 	console.log("DBfindUserByName ettii käyttäjää ",userName)
+	console.log("DBfindUserByName tulos ",userEntry)
 	
-	if (!userEntry) { readyFun(err,[]) }
+	if (!userEntry || userEntry.length===0) { return readyFun(err,[]) }
 	
 	if (userEntry.length>1) {
 	    console.log("PUUTTUU: ei saisi olla useampaa samannimistä käyttäjää (feikkikannassa voi olla)");
-	    console.log("palauta järkevä virhe, muoto=",err)
-	    readyFun(err,[]) 
+	    console.log("palauta järkevä virhe")	    
+	    throw "username not unique";
 	}
 	userEntry = userEntry[0];
 	
-	readyFun(err,userEntry._id)	
+	return readyFun(err,userEntry)	
     }) // find
 }
 
