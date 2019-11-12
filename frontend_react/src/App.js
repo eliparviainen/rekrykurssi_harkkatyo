@@ -1,6 +1,6 @@
 import React from 'react';
 import './App.css';
-import OpenCloseArea from './comps/OpenCloseArea';
+//import OpenCloseArea from './comps/OpenCloseArea';
 
 import AppBar from '@material-ui/core/AppBar'
 import Toolbar from '@material-ui/core/Toolbar'
@@ -10,21 +10,42 @@ import Typography from '@material-ui/core/Typography'
 //import ListItemText from '@material-ui/core/ListItemText'
 import Button from '@material-ui/core/Button'
 import InputLabel from '@material-ui/core/InputLabel'
-import Input from '@material-ui/core/Input'
+//import Input from '@material-ui/core/Input'
+import OutlinedInput from '@material-ui/core/OutlinedInput'
 import Box from '@material-ui/core/Box'
+import {withStyles} from '@material-ui/core'
+//import {makeStyles} from '@material-ui/core'
 
+import {ExpansionPanel,ExpansionPanelSummary,ExpansionPanelDetails} from '@material-ui/core';
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
+import {Table, TableBody, TableCell, TableHead, TableRow} from '@material-ui/core';
+import Paper from '@material-ui/core/Paper';
+//import Paper from '@material-ui/core/Paper';
+import Grid from '@material-ui/core/Grid';
 
-//import MainLayout from './comps/MainLayout';
-//import Login from './comps/Login';
-//import StateHelper from './comps/StateHelper';
+import {Select, MenuItem, FormControl} from '@material-ui/core';
 
 const DEBUG = true;
 const debugstyle = {color: "gray", fontSize: "0.8em", fontStyle:"italic"}
 
 
+const OK = "ok";
+const FORBIDDEN = "forbidden";
+const CONFLICT = "conflict";
+const NOT_FOUND = "not found";
+const SOME_ERROR = "error";
 
 
-class ChooseDBarea extends OpenCloseArea {
+function isEmpty(obj) {
+    for(var key in obj) {
+        if(obj.hasOwnProperty(key))
+            return false;
+    }
+    return true;
+}
+
+
+class ChooseDBarea extends React.Component {
     render() {
 	return(
 	    <div> ChooseDBarea </div>
@@ -33,25 +54,323 @@ class ChooseDBarea extends OpenCloseArea {
 }
 
 
-class CreateDBarea extends OpenCloseArea {
-    render() {
-	if (this.props.appState.userRole!=="editor") {
+class CreateDBarea extends React.Component {
 
-	if (DEBUG) {
-	    return(<div style={debugstyle}> debug: CreateDBarea ei näy koska käyttäjä ei ole editor-roolissa vaan roolissa {this.props.appState.userRole} </div>)
+    
+        constructor(props) {
+	super(props)
+
+	    this.state = {
+		dbName: "",
+		dbDescription:"",
+		dbUserList:"",
+		dbFieldTypes: {},
+		dbEnums: {},
+		newEnumName: "",
+		newEnumValues: [],
+		newFieldName: "",
+		newFieldType: "string",
 	}
-	return([])
 	}
 
-		return(
-		<div> CreateDBarea </div>
+    createDB = () => {
+	console.log("PUUTTUU: jos on jo samanniminen kanta, pitäisi lisätä nro perään")
+	let info = { dbName: this.state.dbName,
+		     dbTemplate: {
+			 dbFieldTypes: this.state.dbFieldTypes,
+			 dbEnums: this.state.dbEnums
+		     }
+		   }
+
+	console.log("FE create DB 1 ",	this.state.dbFieldTypes)
+	
+	console.log("FE create DB ",info)
+	this.props.sendUpDBcreate(info);
+	this.props.sendUpFinishDBcreate();
+    }
+
+
+    /*
+    		    for (let i=0; i<this.state.dbEnums[key].length; i++) {
+			 {this.state.dbEnums[key].map(
+			(value) => { return(<span>{value},</span>)})}
+			 
+    */
+    renderExistingEnums = () => {
+	//console.log(this.state.dbEnums)
+	let enums = [];
+	for (let key in this.state.dbEnums) {
+	    let valuelist = this.state.dbEnums[key].join(',');
+	    enums.push(
+		    <TableRow key={key}>
+		    <TableCell>{key}</TableCell>
+		    <TableCell>{valuelist}
+		</TableCell>
+		    </TableRow>)
+	}
+	return(enums)
+    }
+
+
+        renderExistingFields = () => {
+	    //console.log(this.state.dbFieldTypes)
+	    let enums = [];
+	    for (let key in this.state.dbFieldTypes) {
+	    enums.push(
+		    <TableRow key={key}>
+		    <TableCell>{key}</TableCell>
+		    <TableCell>{this.state.dbFieldTypes[key]}
+		</TableCell>
+		    </TableRow>)
+	    }
+	    return(enums)
+    }
+
+    
+    changeField = (event) => {
+	let newState = this.state;
+	newState[event.target.name] = event.target.value;
+	this.setState(newState);
+//	console.log(this.state)
+    }
+
+
+    changeUserList = (event) => {
+	let newState = this.state;
+	newState.dbUserList = event.target.value.split(",")	
+	this.setState(newState);
+    }
+
+
+    changeEnumName = (event) => {
+	let newState = this.state;
+	newState.newEnumName = event.target.value;
+	this.setState(newState);
+    }
+
+    changeEnumValues = (event) => {
+	let newState = this.state;
+	newState.newEnumValues = event.target.value.split(",")	
+	this.setState(newState);
+    }
+
+
+    createEnum = () => {
+	let newState = this.state;
+	newState.dbEnums[this.state.newEnumName] = this.state.newEnumValues;
+	newState.newEnumName="";
+	newState.newEnumValues=[];
+	this.setState(newState);
+    }
+
+    createField = () => {
+	let newState = this.state;
+	if (this.state.newFieldType==="") { 
+	    newState.dbFieldTypes[this.state.newFieldName] = "string"
+	} else {
+	    newState.dbFieldTypes[this.state.newFieldName] = this.state.newFieldType;
+	}
+	newState.newFieldName="";
+	newState.newFieldType="";
+	this.setState(newState);
+//	console.log(this.state)
+    }
+
+    renderEnumCreator = (oldEnumsFun) => {
+	return(<Paper elevation={5}>
+	       <Box p={1} fontWeight="fontWeightBold">
+	       
+                Custom types
+               
+	       </Box>
+	       <Box p={2}>
+	       <Table size="small">
+		<TableHead>
+		<TableRow>
+		<TableCell title="e.g. Quality rating"> Type name </TableCell>
+		<TableCell title="e.g. Very good, Average, Nonsense"> Comma-separated values (order determines rendering order) </TableCell><TableCell></TableCell>
+		</TableRow>
+		</TableHead>
+	       <TableBody>
+	       {oldEnumsFun()}
+		<TableRow>
+		<TableCell><OutlinedInput type="text" name="newEnumName" value={this.state.newEnumName} onChange={this.changeEnumName}/></TableCell>
+		<TableCell><OutlinedInput type="text" name="newEnumValues" value={this.state.newEnumValues} onChange={this.changeEnumValues}/></TableCell>
+	       <TableCell>
+	       <Button onClick={this.createEnum} variant="outlined" color="primary" size="small" disabled={(isEmpty(this.state.newEnumName)||isEmpty(this.state.newEnumValues))}>Define a new type</Button>
+	      
+	       </TableCell>
+		</TableRow>
+	       </TableBody></Table>
+	       </Box>
+	       </Paper>
 	)
     }
 
+
+
+
+
+    renderFieldCreator = (oldFieldsFun) => {
+
+	let fieldTypeOptions = [];
+	fieldTypeOptions.push(<MenuItem key="string" value="string">string</MenuItem>)
+	fieldTypeOptions.push(<MenuItem key="text" value="text">text</MenuItem>)
+	fieldTypeOptions.push(<MenuItem key="url" value="url">URL</MenuItem>)
+	fieldTypeOptions.push(<MenuItem key="number" value="number">number</MenuItem>)
+	for (let typeName in this.state.dbEnums) {
+	    fieldTypeOptions.push(<MenuItem key={typeName} value={typeName}>{typeName}</MenuItem>)
+	}
+	
+	       
+	return(
+		<Paper elevation={5}>
+	       <Box p={2} fontWeight="fontWeightBold">
+	       
+            Fields
+               
+	    </Box>
+			       <Box p={2}>
+	       <Table size="small">
+				<TableHead>
+		<TableRow>
+		<TableCell title="What would you expect to input in a field called 'Field name'?"> Field name </TableCell>
+		<TableCell title="Field type. Custom types you define will be added here."> Field type </TableCell>
+				<TableCell> </TableCell>
+		</TableRow>
+		</TableHead>
+		<TableBody>
+		{oldFieldsFun()}
+		<TableRow>
+		<TableCell><OutlinedInput type="text" name="newFieldName" value={this.state.newFieldName} onChange={this.changeField}/></TableCell>
+		<TableCell>
+		<FormControl variant="outlined" style={{minWidth:"10em"}}>
+		<Select name="newFieldType" value={this.state.newFieldType} onChange={this.changeField} >
+		{fieldTypeOptions}
+	    </Select>
+		</FormControl>
+		</TableCell>
+		<TableCell><Button onClick={this.createField} variant="outlined" size="small" color="primary"
+	    disabled={(isEmpty(this.state.newFieldName)||isEmpty(this.state.newFieldType))}
+		>Add new field</Button>
+		</TableCell>
+		</TableRow>
+		</TableBody></Table>
+		</Box>
+		</Paper>
+	)
+    }
+
+
+
+
+    
+    render() {
+
+
+	console.log("BEmsg=",this.props.appState.msgFromBackend)
+
+	
+	    return(
+		    
+		    <div>
+		    
+		    
+
+		
+		    <p>
+		    You work in admin mode now. No undos, no confirmation questions.
+		    If you mess it up, cancel and start afresh.
+		    </p>
+		    <hr/>
+
+				
+		    <Typography variant="h6">Create a database</Typography>
+		    <br/>
+
+
+		    <Paper elevation={5}>
+
+		       <Box p={2} fontWeight="fontWeightBold">
+	       
+		Description
+               
+		</Box>
+		    <Box p={2}>
+
+
+		    <Table size="small">
+		    <TableHead>
+		<TableRow>
+		<TableCell title="Database name, preferably shortish."> Name </TableCell>
+		<TableCell title="Free-form text that tells something about the contents or purpose of your database."> Description </TableCell>
+		    <TableCell title="List users who can access the database. Cannot be changed later. Leave empty for public databases."> Comma-separated user list (leave empty if anybody can use) </TableCell>
+		</TableRow>
+		</TableHead>
+		<TableBody>
+		<TableRow>
+		<TableCell><OutlinedInput variant="outlined" type="text" name="dbName" value={this.state.dbName} onChange={this.changeField}/></TableCell>
+		    <TableCell><OutlinedInput type="text" name="dbDescription" multiline={true} value={this.state.dbDescription} onChange={this.changeField}/></TableCell>
+		    <TableCell><OutlinedInput type="text" name="dbUserList" value={this.state.dbUserList} onChange={this.changeUserList}/></TableCell>
+		</TableRow>
+		</TableBody></Table>
+    			       </Box>
+		  
+		</Paper>
+
+		<br/>
+		
+
+		    {this.renderEnumCreator(this.renderExistingEnums)}
+
+		    <br/>
+
+
+		    {this.renderFieldCreator(this.renderExistingFields)}
+		    <Box mt={4} mb={4}>
+
+
+		    <Grid container>
+		    <Grid item xs={3}>
+		    <Button color="primary" variant="contained" size="large" onClick={this.props.appFuns.cancelCreateDB}>Cancel</Button>
+		    </Grid>
+		    <Grid item xs={3}>
+		    <Button color="primary" variant="contained" size="large"  disabled={isEmpty(this.state.dbFieldTypes)} onClick={this.props.appFuns.createDB}>Create database</Button>
+		    </Grid>		    </Grid>
+
+				</Box>
+
+
+		    <div className="KESKEN"> PUUTTUU: toimiiko kuittausviesti?</div>
+		    <Box m={2}>
+		    <Typography component="span" color="secondary">{this.props.appState.msgFromBackend}</Typography>
+		    </Box>
+
+
+		    <hr/>
+		    
+		    <Typography variant="h6">Delete a database</Typography>
+		    <p>
+		    Apologies, this is a course project work, not a full-scale application.<br/>
+		    Databases can only be deleted by hand.
+		    Contact a super-admin who can access the database server.
+		    </p>
+		    </div>	  
+	    )
+	    
+
+    } // render
+
+    /*
+
+*/
+    
 }
 
 
-class SettingsArea extends OpenCloseArea {
+
+
+class SettingsArea extends React.Component {
     render() {
 
 	
@@ -70,7 +389,7 @@ class SettingsArea extends OpenCloseArea {
 
 }
 
-class AddRowArea extends OpenCloseArea {
+class AddRowArea extends React.Component {
 
     render() {
 
@@ -98,7 +417,7 @@ class AddRowArea extends OpenCloseArea {
 	}
 }
 
-class ContentsArea extends OpenCloseArea {
+class ContentsArea extends React.Component {
     render() {
 	
 	if (!this.props.appState.dbId) {
@@ -116,6 +435,44 @@ class ContentsArea extends OpenCloseArea {
 }
 
 
+const DDTinputLabel= withStyles({
+  root: {
+      color: "text.secondary",
+      fontSize: "0.8em"
+  },
+})(InputLabel);
+
+
+// color and variant cannot be set here
+const DDTbutton= withStyles({
+  root: {
+      margin: "1.5em"
+  },
+})(Button);
+
+/*
+const DDTerrorBox= withStyles({
+  root: {
+      color: "error.main",
+      fontSize: "0.7em",
+      padding: "1em",
+  },
+  label: {
+    textTransform: 'none',
+  },
+})(Box);
+*/
+
+
+/*
+const acceptDiscardButtons = (cancelText, cancelFun, acceptText, acceptFun, disableCond) => {
+    return(		<Box m={2}>
+			<DDTbutton color="primary" variant="contained" size="large" onClick={cancelFun}>{cancelText}</DDTbutton>
+			<DDTbutton color="primary" variant="contained" size="large"  disabled={disableCond} onClick={acceptFun}>{acceptText}</DDTbutton>
+			</Box>)
+}
+*/
+
 class LoginPage extends React.Component {
 
     constructor(props) {
@@ -129,31 +486,50 @@ class LoginPage extends React.Component {
         this.setState(state);
 	let hasData = (this.state.userName !== "" && this.state.password !== "");
 	this.setState({buttonDisabled: !hasData});
+	this.props.appFuns.consumeMsgFromBackend();
+    }
+
+    // field changed clear msgFromBackend, but
+    // buttons must clear it also since after an error a new login
+    // can be attempted without changing the fields  
+    clickOk = () => {
+	let buttonFun = (this.props.action==="signup")?this.props.appFuns.finalizeSignUp:this.props.appFuns.finalizeSignIn;
+	this.props.appFuns.consumeMsgFromBackend();
+	buttonFun(this.state.userName, this.state.password);
     }
 
 
-    
+    clickCancel = () => {
+	this.props.appFuns.consumeMsgFromBackend();
+	this.props.appFuns.cancelSignUpIn();
+    }
+
     render() {
 	let buttonName = (this.props.action==="signup")?"Sign up":"Sign in";
-	let buttonFun = (this.props.action==="signup")?this.props.appFuns.finalizeSignUp:this.props.appFuns.finalizeSignIn;
+
 	return(
 		<div>
 		<Typography component="div" align="center">
+
+		<Box m={2} color="error.main" fontSize="0.7em">
+		<p>{this.props.appState.msgFromBackend}</p>
+		</Box>
 		<Box m={2}>
-		<InputLabel>Username</InputLabel>
+		<DDTinputLabel>Username</DDTinputLabel>
 			    	<Box m={1}>
-		<Input m={2} type="string" margin="none" name="userName" value={this.state.userName} onChange={this.change}></Input>
+		<OutlinedInput m={2} type="string" margin="dense" name="userName" value={this.state.userName} onChange={this.change}/>
 		</Box>		</Box>
 
 		
 	    	<Box m={2}>
-		<InputLabel>Password</InputLabel>
+		<DDTinputLabel>Password</DDTinputLabel>
 					    	<Box m={1}>
-		<Input type="password" margin="dense" name="password" value={this.state.password} onChange={this.change}></Input>
+		<OutlinedInput type="password" margin="dense" name="password" value={this.state.password} onChange={this.change}/>
 		</Box>		</Box>
-	    
-			    	<Box m={2}>
-		<Button disabled={this.state.buttonDisabled}color="primary" variant="outlined" onClick={()=>{buttonFun(this.state.userName, this.state.password)}}>{buttonName}</Button>
+
+	    <Box m={2}>
+		<DDTbutton color="primary" variant="contained" size="large" onClick={this.clickCancel}>Cancel</DDTbutton>
+		<DDTbutton color="primary" variant="contained" size="large"  disabled={this.state.buttonDisabled} onClick={this.clickOk}>{buttonName}</DDTbutton>
 		</Box>
 		</Typography>
 
@@ -162,11 +538,17 @@ class LoginPage extends React.Component {
     }   
 }
 
+    /*
+		<Box m={2}>
+		<DDTbutton color="primary" variant="outlined" onClick={this.props.appFuns.cancelSignUpIn}>Cancel</DDTbutton>
+		<DDTbutton color="primary" variant="outlined" disabled={this.state.buttonDisabled} onClick={()=>{buttonFun(this.state.userName, this.state.password)}}>{buttonName}</DDTbutton>
+
+*/
 
 class NavBar extends React.Component {
 
     signInOptions = () => {
-	if (this.props.appState.userRole === "visitor") {
+	if ((this.props.appState.userRole !== "editor") && (this.props.appState.userRole !== "owner")) {
 
 	    return(<div>
 		   <Button color="inherit" onClick={this.props.appFuns.initiateSignUp}>Sign-up</Button>
@@ -176,7 +558,7 @@ class NavBar extends React.Component {
 
 	} else {
 	    return(
-		    <Button color="inherit" onClick={this.props.appFuns.initiateSignOut}>Sign-out</Button>
+		    <Button color="inherit" onClick={this.props.appFuns.signOut}>Sign-out</Button>
 		   )
 	    
 	}
@@ -198,13 +580,61 @@ class NavBar extends React.Component {
     }   
 }
 
+
+
+/*
+const accordeonStyles = makeStyles(theme => ({
+  root: {
+    width: '100%',
+  },
+  heading: {
+    fontSize: theme.typography.pxToRem(15),
+    flexBasis: '33.33%',
+    flexShrink: 0,
+  },
+  secondaryHeading: {
+    fontSize: theme.typography.pxToRem(15),
+    color: theme.palette.text.secondary,
+  },
+})); 
+
+const accordeonClasses = accordeonStyles();
+*/
+
 class App extends React.Component {
 
 
     //======================================================================
     constructor(props) {
 	super(props)
+
+	// create variables
 	this.state = {
+	    pageState: "",
+	    userId: "",
+	    userName: "",
+	    sessionToken: "",
+	    userRole: "",
+	    dbId: "",
+	    dbName: "",
+	    dbRows: [],
+	    dbTemplate: {},
+	    msgFromBackend: ""
+	}
+
+    } // constr
+
+    //======================================================================
+
+
+    componentDidMount = () => {
+    	// set initial values
+	this.zeroAppState();
+    }
+
+
+    zeroAppState = () => {this.setState(
+	{
 	    pageState: "browse",
 	    userId: "",
 	    userName: "",
@@ -213,25 +643,36 @@ class App extends React.Component {
 	    dbId: "",
 	    dbName: "",
 	    dbRows: [],
-	    dbTemplate: {}
-	}
-    } // constr
-
-        //======================================================================
+	    dbTemplate: {},
+	    msgFromBackend: ""
+	})};
+    
     appToBrowseState = () => { this.setState({pageState: "browse"}) }
     appToSignUpState = () => { this.setState({pageState: "signup"}) }
     appToSignInState = () => { this.setState({pageState: "signin"}) }
 
 
-    userToVisitor = () => { this.setState({userRole: "visitor",
+    userIntoVisitor = () => { this.setState({userRole: "visitor",
 					   userId: "",
 					   userName: "",
 					   sessionToken: "",
 					  }) }
-    userToEditor = () => { this.setState({userRole: "editor"}) }
-    userToOwner = () => { this.setState({userRole: "owner"}) }
+    userIntoEditor = () => { this.setState({userRole: "editor"}) }
+
+    // owner role does not currently differ from editor role
+    // as database edit and delete have not been implemented
+    userIntoOwner = () => { this.setState({userRole: "owner"}) }
 
 
+    
+    setMsgFromBackend = (msg) => {
+	this.setState({msgFromBackend:msg});
+    }
+
+    consumeMsgFromBackend = (msg) => {
+	this.setState({msgFromBackend:""});
+    }
+    
 
   //======================================================================
     fetchAndProcess = (path, req, logname, gotDataFun) => {
@@ -247,20 +688,33 @@ class App extends React.Component {
 
 		switch (response.status) {
 		case 200:
-                    response.json().then( (data) => { gotDataFun(data) } )
-			.catch( (error) => { console.log(logname+": Failed to handle JSON: "+error); })
+                    response.json().then( (data) => { gotDataFun(data, OK) } )
+			.catch( (error) => {
+			    console.log(logname+": Failed to handle JSON: "+error);
+			    gotDataFun([], SOME_ERROR)
+			})
 		    break
 		case 409:
 		    console.log(logname+": Server says non-ok status: "+response.status);
-		    gotDataFun([], 409)
+		    gotDataFun([], CONFLICT)
 		    break
+		case 403:
+		    console.log(logname+": Server says non-ok status: "+response.status);
+		    gotDataFun([], FORBIDDEN)
+		    break
+		case 404:
+		    console.log(logname+": Server says non-ok status: "+response.status);
+		    gotDataFun([], NOT_FOUND)
+		    break		    
 		default:
-		    gotDataFun([], error)
+		    gotDataFun([], SOME_ERROR)
 		    break;
 		}
             }) // then		 
             .catch( (error) =>
-                    { console.log(logname+": Server says error: "+error);
+                    {
+			console.log(logname+": Server says error: "+error);
+			gotDataFun([], SOME_ERROR)
 		    }
                   ); 
     }
@@ -304,6 +758,7 @@ class App extends React.Component {
     }
 
     
+    
     //======================================================================
     
     initiateSignUp = () => {
@@ -314,8 +769,20 @@ class App extends React.Component {
 	this.appToSignInState();
     }
 
-    initiateSignOut = () => {
+    cancelSignUpIn = () => {
+	this.appToBrowseState();
+    }
+
+    signOut = () => {
 	console.log("KESKEN: signout");
+
+	        let req = this.makePostReq({"userId": this.state.userId}); 
+
+	console.log("sigout, req", req);
+	this.fetchAndProcess('/epdb/editor/signout/'+this.state.userId, req, "App.js/signOut",
+			     (data, status)=>{
+				 this.zeroAppState();
+			     }) // fetch	
 
 	/*
 	KESKEN
@@ -323,7 +790,7 @@ class App extends React.Component {
 	pyydä BE:ltä uusi tilanne (esim nykykanta voi olla täysin kielletty tai osin auki nyt)
 */
 
-	this.userToVisitor();	
+	this.userIntoVisitor();	
 	this.appToBrowseState();
     }
 
@@ -334,32 +801,67 @@ class App extends React.Component {
 	console.log("finalizeSignUp, req", req);
 	this.fetchAndProcess('/epdb/visitor/signup', req, "App.js/finalizeSignIn",
 			     (data, status)=>{
-				 if (!status) {
-				 console.log("finalizeSignUp onnistui, logataan sisään");
+				 switch (status) {				 
+				 case OK: 
+				     console.log("finalizeSignUp onnistui, logataan sisään");
 				     this.finalizeSignIn(userName, password);
-				 } else {
-				     console.log("PUUTTUU: finalizeSignUp epäonnistui, sano käyttäjälle jotain tai tee jotain järkevää");
-				     KESKEN
-				 }
+				     break;
+				 case CONFLICT:				     				     
+				     this.setMsgFromBackend("Username is taken. Please choose another one.");
+				     break;
+				 default:
+				     this.setMsgFromBackend("Could not sign up. We don't know why.");
+				     break;
+				 } // switch
 			     }) // fetch	
     }
 
+    
     finalizeSignIn = (userName, password) => {
 
+	console.log("KESKEN: mikä vain reload loggaa ulos koska tila ei säily, lisää sessionstorage");
+	
         let req = this.makePostReq({"userName": userName, "password":password});
 
 	console.log("finalizeSignIn, req", req);
 	this.fetchAndProcess('/epdb/visitor/signin', req, "App.js/finalizeSignIn",
-			     (data)=>{
-				 this.getDBlist();
-				 this.setState({userId:data.userId, sessionToken:data.sessionToken})
-				 this.userToEditor();
-				 console.log("KESKEN: toteuta editor/owner-valinta tietokantaa valitessa")
-				 this.appToBrowseState();
+			     (data, status)=>{
+				 switch (status) {				 
+				 case OK:
+				     this.getDBlist();
+				     this.setState({userId:data.userId, sessionToken:data.sessionToken})
+				     this.userIntoEditor();
+				     console.log("KESKEN: toteuta editor/owner-valinta tietokantaa valitessa")
+				     this.appToBrowseState();
 
-				 console.log("signed in "+this.state.userName+", id="+this.state.userId+"m token="+this.state.sessionToken)
+				 console.log("signed in "+userName+", id="+this.state.userId+"m token="+this.state.sessionToken)
+				     break;
+				 case FORBIDDEN:				     				     
+				     this.setMsgFromBackend("Wrong username or password.");
+				     break;
+				 default:
+				     this.setMsgFromBackend("Could not sign in. We don't know why.");
+				     break;
+				 } // switch
+
+				 
 			     }) // fetch
     } 
+
+
+
+        //======================================================================
+
+    createDB = (dbinfo) => {
+	console.log("KESKEN: tietokannan luonti puuttuu");
+    }
+
+
+    cancelCreateDB = (dbinfo) => {
+	console.log("KESKEN: tietokannan luonnin peruminen puuttuu");
+    }
+
+        //======================================================================
 
 
 
@@ -367,12 +869,24 @@ getDBlist = () => {
     console.log("KESKEN: getDBlist");
 }
 
+
+    
+    
     render() {
+
+	console.log("TMP: vaiha pois {!(this.state.userRole!==editor)} tietokannanluonnista")
+
+	console.log("userRole", this.state.userRole)
+	
 	const functionList = {initiateSignUp:this.initiateSignUp,
 			      initiateSignIn:this.initiateSignIn,
-			      initiateSignOut:this.initiateSignOut,
+			      signOut:this.signOut,
 			      finalizeSignUp:this.finalizeSignUp,
 			      finalizeSignIn:this.finalizeSignIn,
+			      cancelSignUpIn:this.cancelSignUpIn,
+			      consumeMsgFromBackend:this.consumeMsgFromBackend,
+			      createDB:this.createDB,
+			      cancelCreateDB:this.cancelCreateDB,
 			     };
 
 	switch (this.state.pageState) {
@@ -393,11 +907,95 @@ getDBlist = () => {
 	return(
 		<div className="App">
 		<NavBar appState={this.state} appFuns={functionList}/>
-		<ChooseDBarea appState={this.state} appFuns={functionList}/>
+
+		<Box m={2}>
+	    <ExpansionPanel>
+		<ExpansionPanelSummary
+	    expandIcon={<ExpandMoreIcon />}
+            aria-controls="panel1a-content"
+            id="panel1a-header"
+		>
+		<Typography color="primary" >Choose a database</Typography>
+		</ExpansionPanelSummary>
+		<ExpansionPanelDetails>
+		<Typography component="div">
+		<ChooseDBarea appState={this.state} appFuns={functionList}/>				
+	       </Typography>
+		</ExpansionPanelDetails>
+
+	    </ExpansionPanel>
+		
+		<ExpansionPanel disabled={!(this.state.userRole!=="editor")}
+	    onChange={this.consumeMsgFromBackend}
+		>
+
+		<ExpansionPanelSummary
+	    expandIcon={<ExpandMoreIcon />}
+            aria-controls="panel2a-content"
+            id="panel2a-header"
+		>
+		<Typography color="primary">Manage databases</Typography>
+		
+		</ExpansionPanelSummary>
+		<ExpansionPanelDetails>
+		<Typography component="div">
 		<CreateDBarea appState={this.state} appFuns={functionList}/>
+	       </Typography>
+		</ExpansionPanelDetails>
+
+	    	    </ExpansionPanel>
+		<ExpansionPanel disabled={(!this.state.dbId)}>
+
+	    <ExpansionPanelSummary
+	    expandIcon={<ExpandMoreIcon />}
+            aria-controls="panel3a-content"
+            id="panel3a-header"
+		>
+		<Typography color="primary" >Settings</Typography>
+		</ExpansionPanelSummary>
+		<ExpansionPanelDetails>
+		<Typography component="div">
 		<SettingsArea appState={this.state} appFuns={functionList}/>
+	       </Typography>
+		</ExpansionPanelDetails>
+
+	    	    </ExpansionPanel>
+		<ExpansionPanel disabled={(!this.state.dbId)}>
+
+	    <ExpansionPanelSummary
+	    expandIcon={<ExpandMoreIcon />}
+            aria-controls="panel4a-content"
+            id="panel4a-header"
+		>
+		<Typography color="primary" >Add new data</Typography>
+		</ExpansionPanelSummary>
+		<ExpansionPanelDetails>
+		<Typography component="div">
 		<AddRowArea appState={this.state} appFuns={functionList}/>
+		
+	       </Typography>
+		</ExpansionPanelDetails>
+	    </ExpansionPanel>
+		<ExpansionPanel disabled={(!this.state.dbId)}>
+
+	    <ExpansionPanelSummary
+	    expandIcon={<ExpandMoreIcon />}
+            aria-controls="panel5a-content"
+            id="panel5a-header"
+		>
+		
+		<Typography color="primary" >Database contents</Typography>
+		</ExpansionPanelSummary>
+		<ExpansionPanelDetails>
+		<Typography component="div">
 		<ContentsArea appState={this.state} appFuns={functionList}/>
+	       </Typography>
+		</ExpansionPanelDetails>
+
+	    </ExpansionPanel>
+	
+</Box>
+	    
 		</div>
 	)
 	} // switch
@@ -591,44 +1189,6 @@ getDBlist = () => {
 	});
 
     }
-    
-    //======================================================================
-    render() {
-
-
-	
-	console.log("KORJAA: staten kanssa ei tartte hölmöä copya aina, setState osaa ")
-	
-	if (this.state.userName === "_nobody") {
-	    return(
-		    <Login
-		//sendUpUserId = {this.setUserIdentity}
-		//sendUpDBid = {this.chooseDB}
-		dbNames={this.state.dbNames}
-		sendUpLogin={this.handleLogin}
-		    />
-	    )}
-
-
-        return(
-                <div className="App">
-		<MainLayout
-	    dbNames={this.state.dbNames}
-	    dbId={this.props.dbId}	    
-	    userId={this.state.userId}
-	    userIsAdmin={this.state.userIsAdmin}
-	    currentDBname = {this.state.currentDBname}
-	    dbRows={this.state.dbRows}
-	    dbTemplate={this.state.dbTemplate}	    
-	    sendUpDBchange={this.changeDBState}
-	    sendUpDBid = {this.chooseDB}
-	    sendUpLogout={this.handleLogout}
-	    sendUpDBcreate={this.createDB}
-		/>
-                </div>      
-        )
-    }
-}
 
 */
 

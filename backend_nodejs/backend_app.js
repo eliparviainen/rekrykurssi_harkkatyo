@@ -85,7 +85,7 @@ app.use("/epdb/editor",checkSessionLife, checkSigninStatus, checkDBaccess, edito
 editorRouter.post('/content/:userId/:dbId', content_post);
 editorRouter.put('/content/:userId/:dbId/:rowId', content_put);
 editorRouter.delete('/content/:userId/:dbId/:rowId', content_delete);
-editorRouter.post('/signout', signout_post);
+editorRouter.post('/signout/:userId', signout_post);
 
 let ownerRouter = express.Router();
 app.use("/epdb/owner",checkSessionLife, checkSigninStatus, checkDBaccess, checkOwnership, ownerRouter);
@@ -134,16 +134,19 @@ function unknownError(res, err) {
     return res.status(500).json({msg: "something could be wrong"})
 }
 
+// 403 = forbidden
 function signInError(res, err) {
     if (err) { console.log("sign-in error handler: ", err) }
     return res.status(403).json({msg: "could not sign in"})
 }
 
+// 422 = unprocessable entity
 function signUpError(res, err) {
     if (err) { console.log("sign-up error handler: ", err) }
     res.status(422).json({msg: "could not sign up"})
 }
 
+// 409 = conflict
 function userNameConflict(res, userName) {
     return res.status(409).json({msg: "username "+userName+" taken"}) 
 }
@@ -247,9 +250,10 @@ ifVerbose("entering signin_post")
 
 	    if (err) { return signInError(res, err) }
 	    
-	    DBiface.findSessionByUID(user, (err, existingSessionID) => {
+	    DBiface.findSessionByUID(user, (err, existingSession) => {
 		if (err) { return passOnError(res, err) }
-		if (existingSessionID) {
+		console.log("existingSession=",existingSession)
+		if (existingSession) {
 		    return res.status(200).json({userId: user._id, sessionToken: existingSession.token})
 		}
 		
@@ -280,16 +284,26 @@ ifVerbose("entering signin_post")
 function signout_post(req, res) {
     ifVerbose("entering signout_post")
 
-    DBiface.findSessionByUID(user, (err, session) => {
+    // implicit assumption of a user having only one session
+    // (if a user can have many sessions, the session token must be used to tell them apart)
+    DBiface.deleteSession(req.params.userId, (err) => {
+		if (err) { return passOnError(res, err) }
+		return res.status(200).json({msg: "signed out"})
+    }) // delete
+    
+    /*
+    DBiface.findSessionByUID(req.params.userId, (err, session) => {
+	console.log("signout löyti session",session)
 	if (err) { return passOnError(res, err) }
-	if (existingSessionID) {
-	    DBiface.deleteSession(session, (err) => {
+	if (session) {
+	DBiface.deleteSession(session, (err) => {
 		if (err) { return passOnError(res, err) }
 		return res.status(200).json({msg: "signed out"})
 	    }) // delete
 	} // if
 	return res.status(200).json({msg: "signed out"})
     }) // find
+*/
 }
 
 

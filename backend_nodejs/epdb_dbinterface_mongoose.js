@@ -10,6 +10,11 @@ module.exports.newSession = function (sessionData, sendFun) {
     newSession.save(sendFun);
 }
 
+
+module.exports.deleteSession = function (userId, sendFun) {
+    epdbSession.deleteOne({userId: userId}, sendFun);
+}
+
     
 module.exports.findSessionByUID = function(userId, readyFun) {
     epdbSession.find({userId: userId}, (err, sessionEntry) => {
