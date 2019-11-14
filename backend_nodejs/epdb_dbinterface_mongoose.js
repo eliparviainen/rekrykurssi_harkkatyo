@@ -1,3 +1,17 @@
+const ifVerbose = require('./backend_verbose')
+require('mongoose-type-url');
+mongoose=require('mongoose');
+
+
+function isEmpty(obj) {
+    for(var key in obj) {
+        if(obj.hasOwnProperty(key))
+            return false;
+    }
+    return true;
+}
+
+
 module.exports.createUser = function (userName, password, readyFun) {
     let newUser = new epdbUser({userName: userName, password: password})
     return newUser.save(readyFun);
@@ -87,30 +101,15 @@ function mongooseInsertRow(dbSchema, rowContents, userId) {
     //	console.log("rivi "+i+" ",newRow)
 }
 
-    
-function mongooseCreateDatabase(dbName, dbTemplate, userEntry) {
 
-    // edellä pitää olla tarkistettu:
-    // - tietokantaa ei ennestään ole
-    // - käyttäjällä on lupa luoda kantoja
-
-    
-let dbSchema = new epdbDatabaseSchema(
-    {
-	dbName: dbName,	
-	dbTemplate: dbTemplate,
-	_creator: userEntry
-    }
-);
-dbSchema.save(function(err, res) {
-                if (err) throw err;
-                console.log('kanta '+res.dbName+' lisätty listaan');
-        });
-
-//console.log(schemaDefJson)
-
-    return(dbSchema) //, modelName: modelName});
+// from stackoverflow
+function noDuplicates(arr) {
+    console.log("arr=",arr)
+    return arr.filter((value, index, self) => self.indexOf(value) === index);
 }
+
+//let x = (names) => names.filter((v,i) => names.indexOf(v) === i)
+//x(names); 
 
 function epdbSetSystemFields(record, userId) {
     record["_timestamp"] = Date.now();
@@ -246,39 +245,58 @@ module.exports.listDBs = function(sendFun) {
 
 
 
-module.exports.create = function(userId, dbSpecs, sendFun) {
 
-    DBlistDBs( (dbNames) => {
+module.exports.createDB = function(ownerId, dbSpecs, sendFun) {
 
-	if (dbNames.includes(dbSpecs.dbName)) { return sendFun();  }
+    ifVerbose("createDB enter");
+    
+   
+    // frontend sends a list of user names, we need id's
+    let userIdList = [];
+    epdbUser.find({ userName : { $in: dbSpecs.dbUserList } }, (err, users) => {
+	userIdList = users.map( (user) => {return(user._id)} );
 
-	epdbUser.find({_id: userId}, (err, userEntry) => {
+	console.log("userIdList",userIdList)
 
-	    if (userEntry.length>1) {
-		console.log("PUUTTUU: ei saisi olla useampaa samannimistä käyttäjää (feikkikannassa voi olla)");
-	    }
-	    userEntry = userEntry[0];
-
-	    //console.log("ue=",userEntry)
-
-
-	    console.log("BE create BD", dbSpecs)
-	    
-	    // frontendin lähettämä id-kenttä on nolla, se vain lähettää
-	    // samanmuotosta dataa kun muutenkin käytetään
-let newDB = mongooseCreateDatabase(
-    dbSpecs.dbName.name,
-    dbSpecs.dbTemplate,
-    userEntry);
-
-	    return sendFun();
-	}) // user find
+	userIdList.push(mongoose.Types.ObjectId(ownerId));
+	userIdList = noDuplicates(userIdList);
 	
-    } ); // db find
+	console.log("userIdList nondupl",userIdList)
+	
+	
+	epdbDatabaseSchema.find({}, (err, dbs) => {
+
+	    console.log("dbs=",dbs)
+	    // sanitize dbSpecs.dbName
+	    if (!isEmpty(dbs)) {
+		let existingNames = dbs.map( (db) => {return(db.dbName)} );
+		if (existingNames.includes(dbSpecs.dbName)) {
+		    dbSpecs.dbName = dbSpecs.dbName+"*";
+		}
+	    }
+	    
+
+	    
+	    let dbSchema = new epdbDatabaseSchema(
+		{
+		    dbName: dbSpecs.dbName,
+		    dbDescription: dbSpecs.dbDescription,
+		    allowedUsers: userIdList,
+		    dbTemplate: dbSpecs.dbTemplate,
+		    _creator: ownerId
+		}
+	    );
+	    dbSchema.save(function(err, schema) {
+		if (err) throw err;
+		ifVerbose("createDB exit, created db ",schema.dbName);
+		sendFun(err, schema)
+	    }) // save
+	}) // find db
+
+
+    }) // find user id's
 
     
-
-//     res.status(200).json(DBlistDBs());
 }
 
 

@@ -1,9 +1,11 @@
 const express = require('express');
 const mongoose = require('mongoose');
-require('mongoose-type-url');
 const bcrypt =  require("bcrypt");
 const https = require('https');
 const fs = require('fs');
+
+const ifVerbose = require('./backend_verbose')
+
 
 DEFAULT_TTL = 1000*60*60;
 
@@ -12,10 +14,6 @@ let app = express();
 app.use(express.json());
 
 
-let verbose=true;
-function ifVerbose(msg) {
-    console.log(msg);
-}
 
 // ============================================================
 // mongoDB + mongoose
@@ -45,9 +43,9 @@ let epdbDatabaseSchemaDef = new mongoose.Schema({
     _creator : { type: mongoose.Schema.Types.ObjectId, ref: 'epdbUser', required: true },
     _timestamp: { type: Date, default: Date.now() },
     dbName : { type: String, required: true },
-    dbDescription : { type: String, required: true },
+    dbDescription : { type: String, required: false },
     dbTemplate : { type: Object, required: true },
-    allowedUsers : [ { type: mongoose.Schema.Types.ObjectId, ref: 'epdbUser', required: true } ],    
+    allowedUsers : [ { type: mongoose.Schema.Types.ObjectId, ref: 'epdbUser', required: false } ],    
 });
 epdbDatabaseSchema = mongoose.model('epdbDatabaseSchema', epdbDatabaseSchemaDef );
 
@@ -114,6 +112,7 @@ function checkDBaccess(req, res, next) {
 
 
 function checkOwnership(req, res, next) {
+    // jos on luomassa uutta kantaa, omistaa sen (tyhjä id)
     console.log("TOTEUTTAMATTA: checkOwnership");
     return next();    
 }
@@ -191,9 +190,10 @@ ifVerbose("entering dbstructure_get")
 function dblist_post(req, res) {
 ifVerbose("entering dblist_post")
 
-    DBiface.create(req.params.userId, req.body, (err, dbId) => {
+    DBiface.createDB(req.params.userId, req.body, (err, schema) => {
 	if (err) { return passOnError(res, err) }
-	return res.status(200).json({ dbId: dbId })
+	// send name since in case of duplicates the server modifies it
+	return res.status(200).json({ dbName: schema.dbName, dbId: schema._id })
     });
 }
 
@@ -248,7 +248,11 @@ ifVerbose("entering signin_post")
 	console.log("signin:in löytämät käyttäjätiedot",user)
 	bcrypt.compare(req.body.password, user.password, function(err, success) {
 
+	    console.log("signin bcryptcompare err",err)
+	    console.log("signin bcryptcompare success",success)
+	    
 	    if (err) { return signInError(res, err) }
+	    if (!success) { return signInError(res, err) }
 	    
 	    DBiface.findSessionByUID(user, (err, existingSession) => {
 		if (err) { return passOnError(res, err) }

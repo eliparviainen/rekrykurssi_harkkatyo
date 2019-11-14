@@ -73,20 +73,48 @@ class CreateDBarea extends React.Component {
 	}
 	}
 
+
+    zeroState = () => {this.setState(
+	    {
+		dbName: "",
+		dbDescription:"",
+		dbUserList:"",
+		dbFieldTypes: {},
+		dbEnums: {},
+		newEnumName: "",
+		newEnumValues: [],
+		newFieldName: "",
+		newFieldType: "string",
+	}
+	)};
+
+    componentDidMount = () => {
+    	// set initial values
+	this.zeroState();
+    }
+
+
     createDB = () => {
-	console.log("PUUTTUU: jos on jo samanniminen kanta, pitäisi lisätä nro perään")
+
 	let info = { dbName: this.state.dbName,
+		     dbDescription: this.state.dbDescription,
+		     dbUserList: this.state.dbUserList,
 		     dbTemplate: {
 			 dbFieldTypes: this.state.dbFieldTypes,
 			 dbEnums: this.state.dbEnums
 		     }
 		   }
 
-	console.log("FE create DB 1 ",	this.state.dbFieldTypes)
-	
-	console.log("FE create DB ",info)
-	this.props.sendUpDBcreate(info);
-	this.props.sendUpFinishDBcreate();
+	console.log("FE create DB ",info)	
+	this.props.appFuns.createDB(info);
+	this.zeroState();
+	this.props.appFuns.consumeMsgFromBackend();
+    }
+
+    cancelCreateDB = () => {
+	this.props.appFuns.cancelCreateDB();
+	this.zeroState();
+	this.props.appFuns.consumeMsgFromBackend();
     }
 
 
@@ -304,7 +332,7 @@ class CreateDBarea extends React.Component {
 		<TableRow>
 		<TableCell title="Database name, preferably shortish."> Name </TableCell>
 		<TableCell title="Free-form text that tells something about the contents or purpose of your database."> Description </TableCell>
-		    <TableCell title="List users who can access the database. Cannot be changed later. Leave empty for public databases."> Comma-separated user list (leave empty if anybody can use) </TableCell>
+		    <TableCell title="List users who, besides yourself, can access the database. Cannot be changed later. Leave empty for public databases."> Comma-separated user list (leave empty if anybody can use) </TableCell>
 		</TableRow>
 		</TableHead>
 		<TableBody>
@@ -332,17 +360,16 @@ class CreateDBarea extends React.Component {
 
 		    <Grid container>
 		    <Grid item xs={3}>
-		    <Button color="primary" variant="contained" size="large" onClick={this.props.appFuns.cancelCreateDB}>Cancel</Button>
+		    <Button color="primary" variant="contained" size="large" onClick={this.cancelCreateDB}>Cancel</Button>
 		    </Grid>
 		    <Grid item xs={3}>
-		    <Button color="primary" variant="contained" size="large"  disabled={isEmpty(this.state.dbFieldTypes)} onClick={this.props.appFuns.createDB}>Create database</Button>
+		    <Button color="primary" variant="contained" size="large"  disabled={isEmpty(this.state.dbFieldTypes)} onClick={this.createDB}>Create database</Button>
 		    </Grid>		    </Grid>
 
 				</Box>
 
 
-		    <div className="KESKEN"> PUUTTUU: toimiiko kuittausviesti?</div>
-		    <Box m={2}>
+		    <Box mt={2}>
 		    <Typography component="span" color="secondary">{this.props.appState.msgFromBackend}</Typography>
 		    </Box>
 
@@ -629,11 +656,11 @@ class App extends React.Component {
 
     componentDidMount = () => {
     	// set initial values
-	this.zeroAppState();
+	this.zeroState();
     }
 
 
-    zeroAppState = () => {this.setState(
+    zeroState = () => {this.setState(
 	{
 	    pageState: "browse",
 	    userId: "",
@@ -774,22 +801,17 @@ class App extends React.Component {
     }
 
     signOut = () => {
-	console.log("KESKEN: signout");
 
-	        let req = this.makePostReq({"userId": this.state.userId}); 
+	let req = this.makePostReq({"userId": this.state.userId}); 
 
 	console.log("sigout, req", req);
 	this.fetchAndProcess('/epdb/editor/signout/'+this.state.userId, req, "App.js/signOut",
 			     (data, status)=>{
-				 this.zeroAppState();
+				 console.log("signed out with status", status);
+				 // In principle, a user could continue using a public database after signout,
+				 // but keeping track of this is complicated. Always start from an initial state.
+				 this.zeroState();
 			     }) // fetch	
-
-	/*
-	KESKEN
-	liian mutkikasta valvoa frontendissä tietokantaan pääsyä,
-	pyydä BE:ltä uusi tilanne (esim nykykanta voi olla täysin kielletty tai osin auki nyt)
-*/
-
 	this.userIntoVisitor();	
 	this.appToBrowseState();
     }
@@ -854,6 +876,29 @@ class App extends React.Component {
 
     createDB = (dbinfo) => {
 	console.log("KESKEN: tietokannan luonti puuttuu");
+
+	let req = this.makePostReq(dbinfo);
+
+	console.log("createDB, req", req);
+	console.log("createDB, osote",'/epdb/owner/list/'+this.state.userId)
+	this.fetchAndProcess('/epdb/owner/list/'+this.state.userId, req, "App.js/createDB",
+			     (data, status)=>{
+				 switch (status) {				 
+				 case OK:
+				     this.setMsgFromBackend("Database '"+data.dbName+"' succesfully created.");
+				     
+				     console.log("createDB onnistui");
+				     // 
+				     console.log("KESKEN: kun dblistanhaku valmis, pitää hakea uusi lista jotta nykykantakin on siinä")
+				     console.log("KESKEN: kun dbvalinta valmis, just luotu tietokanta pitää samalla valita");
+
+				     break;
+				 default:
+				     this.setMsgFromBackend("Could not create database. We don't know why.");
+				     break;
+				 } // switch
+			     }) // fetch	
+
     }
 
 
@@ -873,8 +918,6 @@ getDBlist = () => {
     
     
     render() {
-
-	console.log("TMP: vaiha pois {!(this.state.userRole!==editor)} tietokannanluonnista")
 
 	console.log("userRole", this.state.userRole)
 	
@@ -925,7 +968,7 @@ getDBlist = () => {
 
 	    </ExpansionPanel>
 		
-		<ExpansionPanel disabled={!(this.state.userRole!=="editor")}
+		<ExpansionPanel disabled={(this.state.userRole!=="editor")}
 	    onChange={this.consumeMsgFromBackend}
 		>
 
@@ -1161,33 +1204,6 @@ getDBlist = () => {
 	});
 	//console.log("dbid ",this.state.dbId);
 	
-    }
-
-        //======================================================================
-    handleLogout = () => {
-	let isAdmin=false;	
-	this.setUserIdentity("_nobody",isAdmin);
-    }
-
-        //======================================================================
-    createDB = (info) => {
-	//	info.dbTemplate
-	//	info.dbName
-
-
-        let req = {
-            method: "POST",
-            mode: "cors",
-            headers: {"Content-type":"application/json"},
-	    body: JSON.stringify(info)
-        }
-
-	console.log("FE, App ",info)
-	console.log("FE, App jsonstr", JSON.stringify(info))
-	this.fetchAndProcess('/epdb/meta/'+this.state.userId, req, "App.js/createDB", ()=>{
-	    this.getDBlist();
-	});
-
     }
 
 */
