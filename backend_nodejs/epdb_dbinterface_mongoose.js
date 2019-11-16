@@ -227,20 +227,25 @@ module.exports.getAllRows = function(userId, dbId, sendFun) {
 
 
 
-module.exports.listDBs = function(sendFun) {
+module.exports.listDBs = function(userId, sendFun) {
 
-    return(
+    console.log("listdbs, user=",userId)
+
     epdbDatabaseSchema.find({}, (err, dbEntries) => {
-	let dbNames = [];
+	let dbList = [];
 	dbEntries.map( (entry) => {
-	    //console.log("entry: ",entry.dbName);
-	    dbNames.push({name: entry.dbName, id: entry._id});
+	    console.log("entry: ",entry);
+
+	    
+	    if (isEmpty(entry.allowedUsers) || (entry._owner===userId) || entry.allowedUsers.includes(userId)) {
+		dbList.push({dbName: entry.dbName, dbId: entry._id, dbDescription: entry.dbDescription});
+	    }
 	}) // map
-	//console.log("names=",dbNames)
-	//return res.status(200).json({ "dbNames": dbNames});
-	return (sendFun(dbNames));
+	//console.log("names=",dbList)
+	//return res.status(200).json({ "dbList": dbList});
+	return (sendFun(err,dbList));
     }) // find
-    )
+
 }
 
 
@@ -258,10 +263,13 @@ module.exports.createDB = function(ownerId, dbSpecs, sendFun) {
 
 	console.log("userIdList",userIdList)
 
+
+	// easier to detect a public database if user list is completely empty
+	/*
 	userIdList.push(mongoose.Types.ObjectId(ownerId));
 	userIdList = noDuplicates(userIdList);
-	
 	console.log("userIdList nondupl",userIdList)
+	*/
 	
 	
 	epdbDatabaseSchema.find({}, (err, dbs) => {

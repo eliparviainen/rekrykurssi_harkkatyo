@@ -70,7 +70,7 @@ epdbSession = mongoose.model('epdbSession', epdbSessionDef );
 let visitorRouter = express.Router();
 app.use("/epdb/visitor", visitorRouter);
 
-visitorRouter.get('/list', dblist_get);
+visitorRouter.get('/list/:userId', dblist_get);
 visitorRouter.get('/list/:userId/:dbId', dbstructure_get);
 visitorRouter.get('/content/:userId/:dbId', content_get);
 
@@ -162,13 +162,15 @@ ifVerbose("entering dblist_get")
 
     //    return (DBlistDBs(res));
 
-    console.log("kutsuttu dblist_get");
+    console.log("kutsuttu dblist_get, user=",    req.params.userId);
 
-    DBiface.listDBs(req.body.userId,
-		    (err, dbNames) => {
+    console.log("sanitointi: jos userid on tyhjä jono tms muuta nollaksi (joka on eikukaan)");
+
+    
+    DBiface.listDBs(req.params.userId, (err, dbList) => {
 			if (err) { return passOnError(res, err) }
 			//console.log(dbNames)
-			return res.status(200).json({ "dbNames": dbNames})
+			return res.status(200).json({ "dbList": dbList})
 		    });    
 }
 

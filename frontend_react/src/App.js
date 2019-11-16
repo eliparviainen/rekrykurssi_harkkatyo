@@ -45,11 +45,54 @@ function isEmpty(obj) {
 }
 
 
+// zzz
 class ChooseDBarea extends React.Component {
+
+    constructor(props) {
+	super(props)
+	this.state = {dBdetails: ""};
+    }
+    
+    chooseDB = (event) => {
+//	console.log("cccc ",event.target.value)
+	this.props.appFuns.chooseDB(event.target.value) }
+
+
+    showDetails = (event) => {
+	console.log("focus!", event.target.dataset.index)
+	let indexInMenu = event.target.dataset.index;
+	    console.log("showdet",indexInMenu);
+	    console.log("showdet",this.props.appState.dbList[indexInMenu])
+	    this.setState({dBdetails : this.props.appState.dbList[indexInMenu].dbDescription})
+    }
+
     render() {
-	return(
-	    <div> ChooseDBarea </div>
-	)
+	let optionTags = [];
+	if (!isEmpty(this.props.appState.dbList)) {
+	     optionTags = this.props.appState.dbList.map(
+	(dbEntry, index) => {
+	    return(<MenuItem key={index} value={dbEntry.dbId} name={dbEntry.dbName} data-index={index} onMouseEnter={this.showDetails}>{dbEntry.dbName}</MenuItem>);
+	}) // map
+	}
+
+	
+    return(
+	    <div>
+	    <Grid container spacing={3}>
+	    <Grid>
+	    <FormControl variant="outlined" style={{minWidth:"10em"}}>
+	    <Select value='' onChange={this.chooseDB}>
+	    {optionTags}
+	</Select>
+
+	</FormControl>
+	    	    </Grid>	    <Grid>
+	    <Box m={2}> {this.state.dBdetails}</Box>
+	    </Grid>
+	    	    </Grid>
+	
+	    </div>
+    )
     }
 }
 
@@ -638,11 +681,12 @@ class App extends React.Component {
 	// create variables
 	this.state = {
 	    pageState: "",
-	    userId: "",
+	    userId: 0,
 	    userName: "",
 	    sessionToken: "",
 	    userRole: "",
-	    dbId: "",
+	    dbList: [],
+	    dbId: 0,
 	    dbName: "",
 	    dbRows: [],
 	    dbTemplate: {},
@@ -657,17 +701,19 @@ class App extends React.Component {
     componentDidMount = () => {
     	// set initial values
 	this.zeroState();
+	this.getDBlist();
     }
 
 
     zeroState = () => {this.setState(
 	{
 	    pageState: "browse",
-	    userId: "",
+	    userId: 0,
 	    userName: "",
 	    sessionToken: "",
 	    userRole: "visitor",
-	    dbId: "",
+	    dbList: [],
+	    dbId: 0,
 	    dbName: "",
 	    dbRows: [],
 	    dbTemplate: {},
@@ -680,7 +726,7 @@ class App extends React.Component {
 
 
     userIntoVisitor = () => { this.setState({userRole: "visitor",
-					   userId: "",
+					   userId: 0,
 					   userName: "",
 					   sessionToken: "",
 					  }) }
@@ -850,13 +896,12 @@ class App extends React.Component {
 			     (data, status)=>{
 				 switch (status) {				 
 				 case OK:
-				     this.getDBlist();
 				     this.setState({userId:data.userId, sessionToken:data.sessionToken})
 				     this.userIntoEditor();
 				     console.log("KESKEN: toteuta editor/owner-valinta tietokantaa valitessa")
 				     this.appToBrowseState();
-
-				 console.log("signed in "+userName+", id="+this.state.userId+"m token="+this.state.sessionToken)
+				     this.getDBlist();
+				 console.log("signed in "+userName+", id="+this.state.userId+" token="+this.state.sessionToken)
 				     break;
 				 case FORBIDDEN:				     				     
 				     this.setMsgFromBackend("Wrong username or password.");
@@ -889,9 +934,8 @@ class App extends React.Component {
 				     
 				     console.log("createDB onnistui");
 				     // 
-				     console.log("KESKEN: kun dblistanhaku valmis, pitää hakea uusi lista jotta nykykantakin on siinä")
 				     console.log("KESKEN: kun dbvalinta valmis, just luotu tietokanta pitää samalla valita");
-
+				     this.getDBlist();
 				     break;
 				 default:
 				     this.setMsgFromBackend("Could not create database. We don't know why.");
@@ -910,10 +954,57 @@ class App extends React.Component {
 
 
 
-getDBlist = () => {
-    console.log("KESKEN: getDBlist");
+    getDBlist = () => {
+
+	let req = this.makeGetReq();
+
+	console.log("getlist, req", req);
+	console.log("getlist, user=",this.state.userId)
+	this.fetchAndProcess('/epdb/visitor/list/'+this.state.userId, req, "App.js/getList",
+			     (data, status)=>{
+				 console.log("got dblist", data.dbList);
+				 this.setState({dbList:data.dbList});
+			     }) // fetch	
+
+
 }
 
+
+
+    
+    chooseDB = (dbinfo) => {
+
+	KESKEN
+	hakee tietokannan templaten
+	jos sen saa, hakee tietokannan sisällön
+	jos saa senkin, asettaa paikalliset muuttujat
+	
+	
+	console.log("KESKEN: tietokannan valint puuttuu");
+
+	let req = this.makePostReq(dbinfo);
+
+	console.log("chooseDB, req", req);
+	console.log("chooseDB, osote",'/epdb/owner/list/'+this.state.userId)
+	this.fetchAndProcess('/epdb/owner/list/'+this.state.userId, req, "App.js/chooseDB",
+			     (data, status)=>{
+				 switch (status) {				 
+				 case OK:
+				     this.setMsgFromBackend("Database '"+data.dbName+"' succesfully choosed.");
+				     
+				     console.log("chooseDB onnistui");
+				     // 
+				     console.log("KESKEN: kun dblistanhaku valmis, pitää hakea uusi lista jotta nykykantakin on siinä")
+				     console.log("KESKEN: kun dbvalinta valmis, just luotu tietokanta pitää samalla valita");
+
+				     break;
+				 default:
+				     this.setMsgFromBackend("Could not choose database. We don't know why.");
+				     break;
+				 } // switch
+			     }) // fetch	
+
+    }
 
     
     
@@ -930,6 +1021,7 @@ getDBlist = () => {
 			      consumeMsgFromBackend:this.consumeMsgFromBackend,
 			      createDB:this.createDB,
 			      cancelCreateDB:this.cancelCreateDB,
+			      chooseDB:this.chooseDB,
 			     };
 
 	switch (this.state.pageState) {
