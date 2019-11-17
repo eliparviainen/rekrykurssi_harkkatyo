@@ -168,22 +168,13 @@ for (let fieldname in templateForAddingDB.fieldTypes) {
 
 module.exports.getAllRows = function(userId, dbId, sendFun) {
 
-
-    /*
-    MENOSSA TÄSSÄ
-    lähetä jotain oikeaa dataa
-
-    schemaFor + ID
-    malli = tuo + kaipa skeema oltava
-    listaan "avoimet kannat"? ei tarttisi kaikkia aina
-
-    */
-
+    ifVerbose("entering iface/getAllRows", dbId)
 
     epdbDatabaseSchema.find({_id: dbId}, (err, dbEntry) => {
 
 	dbEntry = dbEntry[0];
 	
+	console.log(dbEntry)
 	console.log("tietokanta löyty ", dbEntry.dbName)
 	let modelName = "schemaFor"+dbId;	
 	let schemaDefJson = mongooseJsonFromTemplate(dbEntry.dbTemplate);
@@ -194,7 +185,6 @@ module.exports.getAllRows = function(userId, dbId, sendFun) {
 
 	console.log("malli "+modelName+" ",currentDB)
 
-	console.log("	KESKEN frontend lähettää käyttäjän nimen, ei id:tä");
 	    console.log("uid=",userId)
 
 	let haku = 	    
@@ -206,18 +196,14 @@ module.exports.getAllRows = function(userId, dbId, sendFun) {
 	    ]
 	    }
 
-	//haku = {_owner: userId}
 	
 	currentDB.find(haku
 	,(err, dbRows) => {
 
-	
+	    if (isEmpty(dbRows)) { return sendFun(err, []) }
 	    console.log("currentDB:n rivit ",dbRows)
-
-	    //KESKEN PITÄÄ FILTTERÖIDÄ julkiset ja omat vain
-	   
 	
-	    return sendFun(dbRows);
+		return sendFun(err, dbRows);
 	}) // currentDB.find
 
 	mongoose.deleteModel(modelName)
@@ -236,7 +222,9 @@ module.exports.listDBs = function(userId, sendFun) {
 	dbEntries.map( (entry) => {
 	    console.log("entry: ",entry);
 
-	    
+	    // listing DBs is allowed for all users (even without login), but only
+	    // public databases and databases allowed for current user will be shown;
+	    // this is why access is checked here and not in the router
 	    if (isEmpty(entry.allowedUsers) || (entry._owner===userId) || entry.allowedUsers.includes(userId)) {
 		dbList.push({dbName: entry.dbName, dbId: entry._id, dbDescription: entry.dbDescription});
 	    }
@@ -244,6 +232,23 @@ module.exports.listDBs = function(userId, sendFun) {
 	//console.log("names=",dbList)
 	//return res.status(200).json({ "dbList": dbList});
 	return (sendFun(err,dbList));
+    }) // find
+
+}
+
+
+module.exports.getHeader = function(userId, dbId, sendFun) {
+
+
+    // router has already checked that userId is allowed to access dbId
+    // (n.b. is the database is public, even the "nobody" userID===0 can read it)
+    
+    console.log("list one db, user=",userId)
+        console.log("list one db, db=",dbId)
+
+    epdbDatabaseSchema.find({_id: dbId}, (err, dbEntries) => {
+	console.log(dbEntries)
+	return (sendFun(err,dbEntries[0]));
     }) // find
 
 }

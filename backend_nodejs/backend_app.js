@@ -64,30 +64,31 @@ epdbSession = mongoose.model('epdbSession', epdbSessionDef );
 // routes
 // ============================================================
 
-// routes check access based on user status (visitor, editor, owner)
-// access set by owner can restrict access to part of information, checked later
 
-let visitorRouter = express.Router();
-app.use("/epdb/visitor", visitorRouter);
+let userRouter = express.Router();
+app.use("/epdb/user", userRouter);
+userRouter.post('/signup', signup_post);
+userRouter.post('/signin', signin_post);
+userRouter.post('/signout/:userId', checkSigninStatus, signout_post);
 
-visitorRouter.get('/list/:userId', dblist_get);
-visitorRouter.get('/list/:userId/:dbId', dbstructure_get);
-visitorRouter.get('/content/:userId/:dbId', content_get);
 
-visitorRouter.post('/signup', signup_post);
-visitorRouter.post('/signin', signin_post);
+let schemaRouter = express.Router();
+app.use("/epdb/structure", checkSessionLife, checkSigninStatus, schemaRouter);
+schemaRouter.post('/:userId', schemas_create);
+schemaRouter.get('/:userId', schemas_readAll);
+schemaRouter.get('/:userId/:dbId', checkDBaccess, schemas_readOne);
 
-let editorRouter = express.Router();
-app.use("/epdb/editor",checkSessionLife, checkSigninStatus, checkDBaccess, editorRouter);
 
-editorRouter.post('/content/:userId/:dbId', content_post);
-editorRouter.put('/content/:userId/:dbId/:rowId', content_put);
-editorRouter.delete('/content/:userId/:dbId/:rowId', content_delete);
-editorRouter.post('/signout/:userId', signout_post);
+let contentRouter = express.Router();
+app.use("/epdb/content", checkSessionLife, checkSigninStatus, checkDBaccess, contentRouter);
+contentRouter.post('/:userId', schemas_create);
+contentRouter.get('/:userId/:dbId', content_readAll);
+// contentRouter.get('/:userId/:dbId/:rowId', checkRowAccess, content_readOne);
+contentRouter.post('/:userId/:dbId', content_create);
+contentRouter.put('/:userId/:dbId/:rowId', checkRowAccess, content_edit);
+contentRouter.delete('/:userId/:dbId/:rowId', checkRowAccess, content_delete);
 
-let ownerRouter = express.Router();
-app.use("/epdb/owner",checkSessionLife, checkSigninStatus, checkDBaccess, checkOwnership, ownerRouter);
-ownerRouter.post('/list/:userId', dblist_post);
+
 
 // ============================================================
 // PLACEHOLDERS, muista toteuttaa nämä
@@ -111,11 +112,11 @@ function checkDBaccess(req, res, next) {
 }
 
 
-function checkOwnership(req, res, next) {
-    // jos on luomassa uutta kantaa, omistaa sen (tyhjä id)
-    console.log("TOTEUTTAMATTA: checkOwnership");
+function checkRowAccess(req, res, next) {
+    console.log("TOTEUTTAMATTA: checkRowAccess");
     return next();    
 }
+
 
 
 
@@ -155,14 +156,14 @@ function userNameConflict(res, userName) {
 // ============================================================
 
 
-function dblist_get(req, res) {
-ifVerbose("entering dblist_get")
+function schemas_readAll(req, res) {
+ifVerbose("entering schemas_readAll")
 
     //  console.log("sending", { "title": dbTitle, "template": dbTemplate})
 
     //    return (DBlistDBs(res));
 
-    console.log("kutsuttu dblist_get, user=",    req.params.userId);
+    console.log("kutsuttu schemas_readAll, user=",    req.params.userId);
 
     console.log("sanitointi: jos userid on tyhjä jono tms muuta nollaksi (joka on eikukaan)");
 
@@ -175,22 +176,23 @@ ifVerbose("entering dblist_get")
 }
 
 
-function dbstructure_get(req, res) {
-ifVerbose("entering dbstructure_get")
+function schemas_readOne(req, res) {
+ifVerbose("entering schemas_readOne")
 
     DBiface.getHeader(req.params.userId, req.params.dbId,
-		      (err, dbName, dbDescription, dbTemplate) => {
+		      (err, data) => {
 			  if (err) { return passOnError(res, err) }
-			  return res.status(200).json({ "dbName": dbName,
-							"dbDescription": dbDescription,
-							"dbTemplate": dbTemplate});
+			  console.log(data)
+			  return res.status(200).json({ "dbId": data._id, "dbName": data.dbName,
+							"dbDescription": data.dbDescription,
+							"dbTemplate": data.dbTemplate});
 		      })
 }
 
 
 
-function dblist_post(req, res) {
-ifVerbose("entering dblist_post")
+function schemas_create(req, res) {
+ifVerbose("entering schemas_create")
 
     DBiface.createDB(req.params.userId, req.body, (err, schema) => {
 	if (err) { return passOnError(res, err) }
@@ -319,16 +321,30 @@ function signout_post(req, res) {
 // ============================================================
 
 			     
-function content_get(req, res) {
-ifVerbose("entering content_get")
+function content_readAll(req, res) {
+ifVerbose("entering content_readAll")
 
     
-    DBiface.getRows(req.params.dbId, req.params.userId, (err, dbRows) => {
+    DBiface.getAllRows(req.params.userId, req.params.dbId, (err, dbRows) => {
 	if (err) { return res.status(200).json([]); }	
 	return res.status(200).json(dbRows);
     })
 }
 
+
+/*
+will this ever be needed?
+
+function content_readOne(req, res) {
+ifVerbose("entering content_readOne")
+
+    
+    DBiface.getOneRow(req.params.dbId, req.params.userId, req.params.rowId, (err, dbRow) => {
+	if (err) { return res.status(200).json([]); }	
+	return res.status(200).json(dbRow);
+    })
+}
+*/
 
 function content_delete(req, res) {
 ifVerbose("entering content_delete")
@@ -336,18 +352,18 @@ ifVerbose("entering content_delete")
 
 //    console.log(req.params.rowId)
 
-    DBiface.deleteRow(req.params.dbId, req.params.userId, req.params.rowId, (err) => {
+    DBiface.deleteRow(req.params.userId, req.params.dbId, req.params.rowId, (err) => {
 	if (err) { return res.status(404).json({msg:"row not found"}) }
 	return res.status(200).json([]);
     })
 }
 
 
-function content_post(req, res) {
-ifVerbose("entering content_post")
+function content_create(req, res) {
+ifVerbose("entering content_create")
 
     
-    let newRow = DBiface.newRow(req.params.dbId, req.params.userId, req.body);
+    let newRow = DBiface.newRow(req.params.userId, req.params.dbId, req.body);
 
     DBiface.addRow(newRow, (err) => {
 	if (err) { return res.status(409).json({msg: "row not saved"}); } 
@@ -356,11 +372,11 @@ ifVerbose("entering content_post")
 }
 
 		     
-function content_put(req, res) {
-ifVerbose("entering content_put")
+function content_edit(req, res) {
+ifVerbose("entering content_edit")
 
 
-    DBiface.getOneRow(req.params.dbId, req.params.userId, req.params.rowId, (err, oldRow) => {
+    DBiface.getOneRow(req.params.userId, req.params.dbId, req.params.rowId, (err, oldRow) => {
 	if (err) { return res.status(409).json({msg: "row not saved"}); }
 	if (!oldRow) { return res.status(404).json({msg: "row not found"}); } 
 	

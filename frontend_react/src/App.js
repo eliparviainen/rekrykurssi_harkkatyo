@@ -50,50 +50,75 @@ class ChooseDBarea extends React.Component {
 
     constructor(props) {
 	super(props)
-	this.state = {dBdetails: ""};
+	// this.state = {dBdetails: "", selectText: "(choose database)"};
+	this.props.appFuns.consumeMsgFromBackend();
+	this.state = {indexInMenu: 0};
     }
     
-    chooseDB = (event) => {
-//	console.log("cccc ",event.target.value)
-	this.props.appFuns.chooseDB(event.target.value) }
+    readSchema = (event) => {
+	this.props.appFuns.readSchema(this.props.appState.dbList[this.state.indexInMenu].dbId)
+    }
 
 
+    setIndex = (event) => {
+	this.setState({indexInMenu:event.target.dataset.index});	
+    }
+    /*
     showDetails = (event) => {
-	console.log("focus!", event.target.dataset.index)
+	console.log("focus!", event.target.dataset.index)	
 	let indexInMenu = event.target.dataset.index;
 	    console.log("showdet",indexInMenu);
 	    console.log("showdet",this.props.appState.dbList[indexInMenu])
-	    this.setState({dBdetails : this.props.appState.dbList[indexInMenu].dbDescription})
+	this.setState({
+	    dBdetails : this.props.appState.dbList[indexInMenu].dbDescription,
+	    selectText : this.props.appState.dbList[indexInMenu].dbName
+	})
     }
+    */
 
+    
     render() {
+
+	if (isEmpty(this.props.appState.dbList)) {
+	    return(<div> No databases available </div>)
+	}
+	
 	let optionTags = [];
 	if (!isEmpty(this.props.appState.dbList)) {
 	     optionTags = this.props.appState.dbList.map(
 	(dbEntry, index) => {
-	    return(<MenuItem key={index} value={dbEntry.dbId} name={dbEntry.dbName} data-index={index} onMouseEnter={this.showDetails}>{dbEntry.dbName}</MenuItem>);
+	    return(<MenuItem key={index} value={dbEntry.dbName} name={dbEntry.dbName} data-index={index} onMouseEnter={this.setIndex}>{dbEntry.dbName}</MenuItem>);
 	}) // map
 	}
 
-	
+	console.log("text=",this.state.indexInMenu)
+	console.log("lista=",this.props.appState.dbList)
     return(
 	    <div>
 	    <Grid container spacing={3}>
 	    <Grid>
 	    <FormControl variant="outlined" style={{minWidth:"10em"}}>
-	    <Select value='' onChange={this.chooseDB}>
+	    <Select value={this.props.appState.dbList[this.state.indexInMenu].dbName} onChange={this.readSchema}>	    
 	    {optionTags}
 	</Select>
 
 	</FormControl>
 	    	    </Grid>	    <Grid>
-	    <Box m={2}> {this.state.dBdetails}</Box>
+	    <Box m={2}> {
+		this.props.appState.dbList[this.state.indexInMenu].dbDescription
+	    }</Box>
 	    </Grid>
 	    	    </Grid>
-	
+
+	    <Box mt={2}>
+	    <Typography component="span" color="secondary">{this.props.appState.msgFromBackend}</Typography>
+	    </Box>
+
+
 	    </div>
     )
-    }
+	// 
+    } 
 }
 
 
@@ -102,7 +127,7 @@ class CreateDBarea extends React.Component {
     
         constructor(props) {
 	super(props)
-
+	this.props.appFuns.consumeMsgFromBackend();
 	    this.state = {
 		dbName: "",
 		dbDescription:"",
@@ -137,7 +162,7 @@ class CreateDBarea extends React.Component {
     }
 
 
-    createDB = () => {
+    createSchema = () => {
 
 	let info = { dbName: this.state.dbName,
 		     dbDescription: this.state.dbDescription,
@@ -149,13 +174,13 @@ class CreateDBarea extends React.Component {
 		   }
 
 	console.log("FE create DB ",info)	
-	this.props.appFuns.createDB(info);
+	this.props.appFuns.createSchema(info);
 	this.zeroState();
 	this.props.appFuns.consumeMsgFromBackend();
     }
 
-    cancelCreateDB = () => {
-	this.props.appFuns.cancelCreateDB();
+    cancelCreateSchema = () => {
+	this.props.appFuns.cancelCreateSchema();
 	this.zeroState();
 	this.props.appFuns.consumeMsgFromBackend();
     }
@@ -403,10 +428,10 @@ class CreateDBarea extends React.Component {
 
 		    <Grid container>
 		    <Grid item xs={3}>
-		    <Button color="primary" variant="contained" size="large" onClick={this.cancelCreateDB}>Cancel</Button>
+		    <Button color="primary" variant="contained" size="large" onClick={this.cancelCreateSchema}>Cancel</Button>
 		    </Grid>
 		    <Grid item xs={3}>
-		    <Button color="primary" variant="contained" size="large"  disabled={isEmpty(this.state.dbFieldTypes)} onClick={this.createDB}>Create database</Button>
+		    <Button color="primary" variant="contained" size="large"  disabled={isEmpty(this.state.dbFieldTypes)} onClick={this.createSchema}>Create database</Button>
 		    </Grid>		    </Grid>
 
 				</Box>
@@ -487,18 +512,563 @@ class AddRowArea extends React.Component {
 	}
 }
 
-class ContentsArea extends React.Component {
-    render() {
-	
-	if (!this.props.appState.dbId) {
-	    if (DEBUG) {
-		return(<div style={debugstyle}> debug: ContentsArea ei näy koska tietokantaa ei ole valittu </div>)	    }	    
-	    return([])	    
-	}
+
+
+//import StateHelper from './StateHelper';
+
+// ============================================================
+export class RowContents  extends React.Component 
+// ============================================================
+{
+
+
+
+    static emptyRow(template) {
+	// this.props.dbTemplate
+	let newRow = {};
+	for (let key in template.fieldTypes)
+	{ 	   
+	    switch (template.fieldTypes[key]) {
+	    case "string": newRow[key]=""; break;
+	    case "text": newRow[key]=""; break;
+	    case "URL": newRow[key]=template.enums[key][0]; break;
+	    case "number":newRow[key]="0"; break;
+	    default:
+		// DBINTERNAL-kenttiä ei luoda täällä
+		//newRow[key]="";
+	    }//switch
+	}//for
+	return(newRow);
+    }
+
+    
+    renderContentsForEdit = () => {
+
+
+    /*
+      wrapWithTitle = (title, block) => {
+      return({block})
+      console.log(title)
+      console.log(block())
+      return(
+      
+      )
+      }
+    */
+
 
 	
+	let fieldnames = [];
+
+
+	//console.log("RowCedit",this.props.jsonrow)
+
+	
+	for (let key in this.props.dbTemplate.fieldTypes) { fieldnames.push(key); }
+	
+	let wideElems = fieldnames.map(
+	    (key, index) => {
+		
+		//this.wrapWithTitle(key, () => {
+		switch (this.props.dbTemplate.fieldTypes[key]) {
+		case "string":
+
+		    //console.log("RowCedit/in",this.props.jsonrow)
+		    //console.log(key)
+
+		    return(
+			    <div className="editField" key={index}>
+			    <div className="editFieldTitle">{key}</div>
+			    <input type="text"			    
+			name={key}
+			value={this.props.jsonrow[key]}
+			onChange={this.props.change} /></div>
+		    )
+
+		case "text":
+		    return(				
+			    <div className="editField" key={index}>
+			    <div className="editFieldTitle">{key}</div>
+			    <input type="textarea"			    
+			name={key}
+			value={this.props.jsonrow[key]}
+			onChange={this.props.change} /></div>)
+
+		default:
+		    return(<span key={index}/>)
+		} // switch
+		//}) // titleWrap			     
+	    } //map:n fun	     
+	) // map
+
+	
+	let enumTypes = [];
+	for (let typeName in this.props.dbTemplate.enums) {
+	    enumTypes.push(typeName);
+	}
+	console.log("enums=",enumTypes)
+	
+	
+	let narrowElems =
+	    fieldnames.map(
+		(key, index) => {
+
+		    console.log("TESTAAMATONTA KOODIA");
+		    console.log(this.props.dbTemplate.fieldTypes[key])
+		    //let enumInd = enumTypes.indexOf(this.props.dbTemplate.fieldTypes[key]);
+		    if (enumTypes.includes(this.props.dbTemplate.fieldTypes[key])) {
+		    //if (enumInd>=0) {
+
+			let enumName = this.props.dbTemplate.fieldTypes[key];
+			console.log("if ",this.props.dbTemplate.fieldTypes[key])
+			console.log("if ",this.props.dbTemplate.enums[enumName])
+			
+			let optionTags = this.props.dbTemplate.enums[enumName].map(
+			    (enumval, index) => {
+				return(<option key={index} value={enumval} name={enumval} >{enumval}</option>);
+			    }) // map
+
+			//console.log( optionTags );
+			return(
+				<div className="editField" key={index}>
+				<div className="editFieldTitle">{key}</div>
+				<select>
+				{optionTags}
+			    </select>
+				</div>)
+		    }
+
+		    
+		    switch (this.props.dbTemplate.fieldTypes[key]) {
+
+			
+		    case "number":
+
+			// testivaiheessa näitä on kun kentässä lukee "number23" tai jotain
+			let numval = parseInt(this.props.jsonrow[key],10);
+			numval = isNaN(numval) ? 0 : numval;
+			
+			return(
+				<div className="editField" key={index}>
+				<div className="editFieldTitle">{key}</div>
+				<input type="number"
+			    name={key}
+			    value={numval}
+			    onChange={this.props.change} /></div>)
+		    default:
+			return(<span key={index}/>)
+		    }
+		})
+	
+	
+	return(<div className="KESKEN">
+	       <div className="wideElemsBox">{wideElems}</div>
+	       <div className="narrowElemsBox">{narrowElems}</div>
+	       </div>
+	      )
+    
+
+    }
+
+    renderContentsForShow = () => {
+	
+	let fieldnames = [];
+	for (let key in this.props.dbTemplate.fieldTypes) { fieldnames.push(key); 
+						      }
+
+	let wideElems = fieldnames.map(
+	    (key, index) => {
+
+		// &nbsp; on tilapäinen kludge joka varaa tilaa tyhjille
+		// kentille; ongelma poistuu toivottavasti kun lisää ui-kirjaston
+		switch (this.props.dbTemplate.fieldTypes[key]) {
+		case "string":
+		    return( <tr key={index}><td>&nbsp;{this.props.jsonrow[key]}</td></tr>)
+		case "URL":
+		    return( <tr key={index}><td style={{"fontStyle":"italic"}}>&nbsp;{this.props.jsonrow[key]}</td></tr>)
+		case "text":
+		    return( <tr key={index}><td>&nbsp;{this.props.jsonrow[key]}</td></tr>)
+		default:
+		    return(<tr key={index}></tr>) //<span key={index}/>)
+		}
+	    })
+
+
+
+		
+	let enumTypes = [];
+	for (let typeName in this.props.dbTemplate.enums) {
+	    enumTypes.push(typeName);
+	}
+		
+	let narrowElems =
+	    fieldnames.map(
+		(key, index) => {
+
+
+
+		    if (enumTypes.includes(this.props.dbTemplate.fieldTypes[key])) {
+			return( <div key={index}> {key}: {this.props.jsonrow[key]} </div>)
+		    }
+
+
+		    
+		    switch (this.props.dbTemplate.fieldTypes[key]) {
+		    case "enum":
+			return( <div key={index}> {key}: {this.props.jsonrow[key]} </div>)
+		    case "number":
+			return( <div key={index}> {key}: {this.props.jsonrow[key]} </div>)
+		    default:
+			return(<span key={index}/>)
+		    }
+		}) // map
+
+
+	return(<div>
+	       <div className="wideElemsBox"><table><tbody>{wideElems}</tbody></table></div>
+	       <div className="narrowElemsBox">{narrowElems}</div>
+	       </div>)
+    }//render for show
+
+    render() {
+
+//console.log("RowCont:",this.props.jsonrow)
+	
+	if (this.props.mode === "edit" || this.props.mode === "add") {
+	    return(this.renderContentsForEdit()) 
+	}
+	    return(this.renderContentsForShow())
+	    
+    
+}
+}
+
+// ============================================================
+ class RowControls extends React.Component
+// ============================================================
+{
+    renderShowControls = () => {
+
+	
+	if (this.props.jsonrow._owner === this.props.userId) {
+	    
+	    return(<div>
+		   <div><Button text="Edit" onClick={this.props.toEdit}/></div>
+		   <div><Button text="Remove" onClick={this.props.toRemove}/></div>
+		   </div>
+	    )
+	
+	} else {
+	    return(
+		    <div className="sharingInfo"> Shared by another user<br/> (no editing) </div>
+	    )
+	}
+
+
+    }
+
+
+    renderEditControls = () => {
+
+
+    return(<div>
+	
+	       <div><Button text="Save" onClick={()=>{this.props.sendUpEdits(); this.props.finishEdit(); }}/></div>
+	       <div><Button text="Discard edits" onClick={this.props.finishEdit}/></div>
+	   </div>)
+    }
+
+    
+        renderAddControls = () => {
+	    
+
+	    return(<div>
+		   <p className="KESKEN"> PUUTTUU: select:ien arvoja ei kirjata minnekään, kantaan menee aina eka arvo </p>
+	       <div><Button text="Add" onClick={()=>{this.props.sendUpEdits(); this.props.finishEdit(); }}/></div>
+	       <div><Button text="Cancel" onClick={this.props.finishEdit}/></div>
+	   </div>)
+    }
+
+
+        render() {
+	if (this.props.mode === "edit") {
+	    return(this.renderEditControls())
+	}
+
+	    if (this.props.mode === "add") {
+	    return(this.renderAddControls())
+	} 
+	    return(this.renderShowControls())
+	    
+	}
+}
+
+
+
+//class RowRemove extends React.Component {}
+
+export class Row extends React.Component {
+
+    constructor(props) {
+	super(props)
+	this.state = { editMode: (this.props.mode==="edit"), removeMode: false, addMode: (this.props.mode==="add"),
+		       jsonrow: this.props.jsonrow
+		     }
+	//console.log("Row constr ",this.props.mode)
+	//console.log("Row constr ",this.props.jsonrow)
+    }
+
+
+    change = (event) => {
+//	console.log("EI EHKÄ TOIMI, tässä ei synny kopiota jsonrow:sta vaan viite?")
+	//let stateJson = StateHelper.copyStateWithMods(this.state.jsonrow, event.target.name, event.target.value);
+	/*
+	let stateJson = StateHelper.copyStateWithMods(this.state.jsonrow, event.target.name, event.target.value);
+	let state = this.state;
+	state.jsonrow = stateJson;
+	//console.log(stateJson);	console.log(state)
+	*/
+	let newrow = this.state.jsonrow;
+	newrow[event.target.name]=event.target.value;
+	this.setState({jsonrow: newrow});
+	
+    }
+
+
+    // {(info) => {this.props.sendUpDBchange("update", info)}}
+        sendUpEdits = () => {
+	    this.props.sendUpDBchange("update",this.state.jsonrow);
+    }
+    
+    sendUpRemove = () => {
+	this.props.sendUpDBchange('delete',this.state.jsonrow._id);
+	console.log('sendUpEdits Row: lähetä remove ylöspäin',this.state.jsonrow);
+    }
+
+    sendUpCreate = () => {
+	this.props.sendUpDBchange('create',this.state.jsonrow);
+    }
+
+
+
+    
+    toEditMode = () => { this.setState({editMode: true, removeMode: false, addMode: false, jsonrow:this.state.jsonrow});
+			 console.log("to edit mode") }
+    toRemoveMode = () => { this.setState({editMode: false, removeMode: true, addMode: false, jsonrow:this.state.jsonrow});
+			   console.log("to remove mode") }
+    toReadMode = () => { this.setState({editMode: false, removeMode: false, addMode: false,jsonrow:this.state.jsonrow });
+			 console.log("to read mode") }
+    toAddMode = () => { this.setState({editMode: false, removeMode: false, addMode: true,jsonrow:RowContents.emptyRow(this.props.dbTemplate) });
+			 console.log("to add mode") }
+
+    
+    renderRemoveConfirm = () => { return(
+	    <div className="removeConfirm">
+	    <table><tbody><tr><td>
+	    <RowContents mode="show" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow}/>
+	    </td>
+	    <td>
+	    <div><Button text="Confirm remove" onClick={()=>{this.sendUpRemove(); this.props.finishRemove(); }}/></div>
+	    <div><Button text="Cancel remove" onClick={this.props.finishRemove}/></div>
+	    </td>	       
+	    </tr></tbody></table>
+
+	</div>
+    )
+				}
+
+    
+    render() {
+
+	if (this.state.addMode) {
+//	console.log("Row:",this.state.jsonrow)
+
+	    return(<table><tbody><tr><td>
+		    <RowContents mode="add" dbTemplate={this.props.dbTemplate} jsonrow = {this.state.jsonrow}
+		change={this.change}
+		    />
+
+		   		   </td><td>
+		    <RowControls mode="add"
+		dbTemplate={this.props.dbTemplate}
+
+		   
+		finishEdit={this.toAddMode}
+		sendUpEdits={this.sendUpCreate}
+			/>
+		   </td></tr></tbody></table>
+	)
+
+	}
+	    
+	
+	if (this.state.editMode)
+	{
+	    return(<table><tbody><tr><td>
+		   <RowContents mode="edit" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow} change={this.change}/>
+		   <p className="KESKEN"> BUGI: nrokenttään ei voi kirj numeroa; nrokentän muutettu arvo ei näy ainakaan oikein</p>
+		   </td><td>
+		    <RowControls mode="edit" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow}
+		   finishEdit={this.toReadMode}
+		   sendUpEdits={this.sendUpEdits}
+		   />
+		   </td></tr></tbody></table>
+	    )
+	}
+
+
+	if (this.state.removeMode)
+	{
+	    return(
+			    <div className="removeConfirm">
+		    <table><tbody><tr><td>
+		    <RowContents mode="show" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow}/>
+	    </td>
+	    <td>
+		    <div><Button text="Confirm remove" onClick={()=>{this.sendUpRemove(); this.toReadMode(); }}/></div>
+	    <div><Button text="Cancel remove" onClick={this.toReadMode}/></div>
+	    </td>	       
+	    </tr></tbody></table>
+
+	</div>
+	   	    
+	    )
+	}
+
 	return(
-	    <div> ContentsArea </div>
+		<div className="KESKEN">
+		<table><tbody><tr>
+		<td>
+		<RowContents mode="show" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow}/>
+		</td>
+		<td>
+		<RowControls mode="view"
+	    jsonrow={this.state.jsonrow}
+	    userId={this.props.userId}
+	    toEdit={this.toEditMode}
+	    toRemove={this.toRemoveMode} />
+	       </td>
+		</tr></tbody></table>
+		</div>
+	)
+    } // render
+   
+}
+
+
+class ContentsArea extends React.Component {
+
+    
+
+    
+    //inEditMode
+
+    timestampSortDesc = (a,b) => {
+    if(a._timestamp < b._timestamp) return 1;
+    if(a._timestamp > b._timestamp) return -1;
+    return 0;
+    }
+
+
+    
+    
+    render() {
+
+	// <RowRead key={index} dbTemplate={this.props.dbTemplate} jsonrow={dbrow}/>
+
+
+//	console.log("ContentArea:",this.props.appState.settings)
+
+	/* aina aikajärjestys */
+	this.props.appState.dbRows.sort(this.timestampSortDesc);
+
+	let rows = [];
+	if (this.props.appState.settings.groupBy === "none") {
+	    
+	    rows = this.props.appState.dbRows.map(
+	    (dbrow,index) => {
+
+		//console.log("ContentArea:",dbrow)
+
+		
+		if (this.props.appState.settings.showShared || dbrow._owner === this.props.userId) {
+		return(		    
+			<Row key={dbrow._id} mode="view"
+		    dbTemplate={this.props.dbTemplate}
+		    jsonrow={dbrow}
+		    userId={this.props.userId}
+		    sendUpDBchange={this.props.sendUpDBchange}
+			/>
+		)} else { return([]) }
+	    }) // map
+	} // if no grouping
+	else {
+	    rows = [];
+	    for (let groupingVariableValue in this.props.appState.settings.valueVisibility) {
+		if (this.props.appState.settings.valueVisibility[groupingVariableValue]) {
+
+		    /* käy aina läpi koko tietokannan :( */
+		    let rows2 = this.props.appState.dbRows.map(
+			(dbrow,index) => {
+
+			    if (dbrow[this.props.appState.settings.groupBy]===groupingVariableValue) {
+
+						if (this.props.appState.settings.showShared || dbrow._owner === this.props.userId) {
+				return(
+				    <Row key={dbrow._id} mode="view"
+				dbTemplate={this.props.dbTemplate}
+				jsonrow={dbrow}
+				userId={this.props.userId}
+				sendUpDBchange={this.props.sendUpDBchange}
+					/>
+				) } else {return([])}
+			    }
+			
+			    
+			    //console.log("x")
+			    //return(<div key={index} className="groupTitle">{groupingVariableValue}</div>);
+			    //   return(<div key={index}>x</div>)
+			    return([])
+			});
+
+
+		    rows.push(
+			    <div key={groupingVariableValue}>
+			    <div className="groupTitle">{groupingVariableValue}</div>
+			    <div className="groupContentsBox">
+			    {rows2}
+			    </div>
+			    </div>
+		    );
+		    
+
+
+		    //rows=rows.concat(rows2);
+		    
+		    //console.log(rows2)
+//		    rows.concat( );
+//		    console.log(rows.concat(rows2))
+		    
+		    
+		    //otsikko
+		    //rivit
+	    } // if
+	    } // for
+//	if (rows===[]) { rows=<span/> }
+	}
+	
+	
+	return(
+		<div>
+	     	<div className="areaLabel">
+	    	<span> Content </span>
+		</div>
+
+		<div className="listArea" id="ContentAreaShow">
+		<p className="KESKEN"> PUUTTUU: tyhjien kenttien renderöinti viemään tilaa (ui-kirjasto tehnee?) </p>
+		<p className="KESKEN"> PUUTTUU: rivin merkkaaminen jaetuksi/yksityiseksi</p>
+		{rows}
+	    </div>			 </div>
 	)
     }
 
@@ -640,7 +1210,7 @@ class NavBar extends React.Component {
 		<Toolbar>
                 <Typography type="title" style={{ flex: 1 }}>
 		<span className="logo">DDT</span> 
-		<span>Databases for Daily Tasks</span>
+		<span>Databases for Daily Topics</span>
 		</Typography>		
 		{this.signInOptions()}	           
             </Toolbar>
@@ -671,6 +1241,24 @@ const accordeonStyles = makeStyles(theme => ({
 const accordeonClasses = accordeonStyles();
 */
 
+class Routes {
+    static signout(userId) { return('/epdb/user/signout/'+userId); }
+    static signup() { return('/epdb/user/signup'); }
+    static signin() { return('/epdb/user/signin'); }
+
+    static createSchema(userId) { return('/epdb/structure/'+userId); }
+    static readSchema(userId, dbId) { return('/epdb/structure/'+userId+"/"+dbId); }
+    static readAllSchemas(userId) { return('/epdb/structure/'+userId); }
+    static updateSchema(userId, dbId) { throw new Error("NOT IMPLEMENTED: edit database") };
+    static deleteSchema(userId, dbId) { throw new Error("NOT IMPLEMENTED: delete database") };
+    
+    static createRow(userId, dbId) { return('/epdb/content/'+userId+"/"+dbId); }
+    // static readRow(userId, dbId, rowId) { return('/epdb/content/'+userId+"/"+dbId+"/"+rowId); }
+    static readAllRows(userId, dbId) { return('/epdb/content/'+userId+"/"+dbId); }
+    static updateRow(userId, dbId, rowId) { return('/epdb/content/'+userId+"/"+dbId+"/"+rowId); }
+    static deleteRow(userId, dbId, rowId) { return('/epdb/content/'+userId+"/"+dbId+"/"+rowId); }
+}
+
 class App extends React.Component {
 
 
@@ -688,9 +1276,11 @@ class App extends React.Component {
 	    dbList: [],
 	    dbId: 0,
 	    dbName: "",
-	    dbRows: [],
+	    dbDescription: "",
 	    dbTemplate: {},
-	    msgFromBackend: ""
+	    dbRows: [],
+	    msgFromBackend: "",
+	    settings: {},
 	}
 
     } // constr
@@ -701,7 +1291,7 @@ class App extends React.Component {
     componentDidMount = () => {
     	// set initial values
 	this.zeroState();
-	this.getDBlist();
+	this.readAllSchemas();
     }
 
 
@@ -715,9 +1305,11 @@ class App extends React.Component {
 	    dbList: [],
 	    dbId: 0,
 	    dbName: "",
+	    dbDescription: "",
 	    dbRows: [],
 	    dbTemplate: {},
-	    msgFromBackend: ""
+	    msgFromBackend: "",
+	    settings: {groupBy: "none", showShared: true },
 	})};
     
     appToBrowseState = () => { this.setState({pageState: "browse"}) }
@@ -851,7 +1443,7 @@ class App extends React.Component {
 	let req = this.makePostReq({"userId": this.state.userId}); 
 
 	console.log("sigout, req", req);
-	this.fetchAndProcess('/epdb/editor/signout/'+this.state.userId, req, "App.js/signOut",
+	this.fetchAndProcess(Routes.signout(this.state.userId), req, "App.js/signOut",
 			     (data, status)=>{
 				 console.log("signed out with status", status);
 				 // In principle, a user could continue using a public database after signout,
@@ -867,7 +1459,7 @@ class App extends React.Component {
         let req = this.makePostReq({"userName": userName, "password":password});
 
 	console.log("finalizeSignUp, req", req);
-	this.fetchAndProcess('/epdb/visitor/signup', req, "App.js/finalizeSignIn",
+	this.fetchAndProcess(Routes.signup(), req, "App.js/finalizeSignIn",
 			     (data, status)=>{
 				 switch (status) {				 
 				 case OK: 
@@ -892,7 +1484,7 @@ class App extends React.Component {
         let req = this.makePostReq({"userName": userName, "password":password});
 
 	console.log("finalizeSignIn, req", req);
-	this.fetchAndProcess('/epdb/visitor/signin', req, "App.js/finalizeSignIn",
+	this.fetchAndProcess(Routes.signin(), req, "App.js/finalizeSignIn",
 			     (data, status)=>{
 				 switch (status) {				 
 				 case OK:
@@ -900,7 +1492,7 @@ class App extends React.Component {
 				     this.userIntoEditor();
 				     console.log("KESKEN: toteuta editor/owner-valinta tietokantaa valitessa")
 				     this.appToBrowseState();
-				     this.getDBlist();
+				     this.readAllSchemas();
 				 console.log("signed in "+userName+", id="+this.state.userId+" token="+this.state.sessionToken)
 				     break;
 				 case FORBIDDEN:				     				     
@@ -919,23 +1511,23 @@ class App extends React.Component {
 
         //======================================================================
 
-    createDB = (dbinfo) => {
+    createSchema = (dbinfo) => {
 	console.log("KESKEN: tietokannan luonti puuttuu");
 
 	let req = this.makePostReq(dbinfo);
 
-	console.log("createDB, req", req);
-	console.log("createDB, osote",'/epdb/owner/list/'+this.state.userId)
-	this.fetchAndProcess('/epdb/owner/list/'+this.state.userId, req, "App.js/createDB",
+	console.log("createSchema, req", req);
+	console.log("createSchema, osote",'/epdb/owner/list/'+this.state.userId)
+	this.fetchAndProcess(Routes.createSchema(this.state.userId), req, "App.js/createSchema",
 			     (data, status)=>{
 				 switch (status) {				 
 				 case OK:
 				     this.setMsgFromBackend("Database '"+data.dbName+"' succesfully created.");
 				     
-				     console.log("createDB onnistui");
+				     console.log("createSchema onnistui");
 				     // 
 				     console.log("KESKEN: kun dbvalinta valmis, just luotu tietokanta pitää samalla valita");
-				     this.getDBlist();
+				     this.readAllSchemas();
 				     break;
 				 default:
 				     this.setMsgFromBackend("Could not create database. We don't know why.");
@@ -946,7 +1538,7 @@ class App extends React.Component {
     }
 
 
-    cancelCreateDB = (dbinfo) => {
+    cancelCreateSchema = (dbinfo) => {
 	console.log("KESKEN: tietokannan luonnin peruminen puuttuu");
     }
 
@@ -954,13 +1546,13 @@ class App extends React.Component {
 
 
 
-    getDBlist = () => {
+    readAllSchemas = () => {
 
 	let req = this.makeGetReq();
 
 	console.log("getlist, req", req);
 	console.log("getlist, user=",this.state.userId)
-	this.fetchAndProcess('/epdb/visitor/list/'+this.state.userId, req, "App.js/getList",
+	this.fetchAndProcess(Routes.readAllSchemas(this.state.userId), req, "App.js/getList",
 			     (data, status)=>{
 				 console.log("got dblist", data.dbList);
 				 this.setState({dbList:data.dbList});
@@ -972,41 +1564,79 @@ class App extends React.Component {
 
 
     
-    chooseDB = (dbinfo) => {
-
-	KESKEN
-	hakee tietokannan templaten
-	jos sen saa, hakee tietokannan sisällön
-	jos saa senkin, asettaa paikalliset muuttujat
-	
+    readSchema = (dbId) => {
 	
 	console.log("KESKEN: tietokannan valint puuttuu");
 
-	let req = this.makePostReq(dbinfo);
+	let req = this.makeGetReq();
 
-	console.log("chooseDB, req", req);
-	console.log("chooseDB, osote",'/epdb/owner/list/'+this.state.userId)
-	this.fetchAndProcess('/epdb/owner/list/'+this.state.userId, req, "App.js/chooseDB",
+	console.log("readSchema, req", req);
+
+	this.fetchAndProcess(Routes.readSchema(this.state.userId,dbId), req, "App.js/readSchema",
 			     (data, status)=>{
 				 switch (status) {				 
 				 case OK:
-				     this.setMsgFromBackend("Database '"+data.dbName+"' succesfully choosed.");
-				     
-				     console.log("chooseDB onnistui");
-				     // 
-				     console.log("KESKEN: kun dblistanhaku valmis, pitää hakea uusi lista jotta nykykantakin on siinä")
-				     console.log("KESKEN: kun dbvalinta valmis, just luotu tietokanta pitää samalla valita");
 
+				     this.setState({
+					 dbId: dbId,
+					 dbName: data.dbName,
+					 dbDescription: data.dbDescription,
+					 dbTemplate: data.dbTemplate,
+				     });
+
+				     
+				     this.setMsgFromBackend("Database '"+data.dbName+"' in use.");
+				     
+				     console.log("readSchema onnistui");
+				     this.readAllRows(data.dbId);
+				     break;
+				 case FORBIDDEN:
+				     this.setMsgFromBackend("No access to database");
 				     break;
 				 default:
-				     this.setMsgFromBackend("Could not choose database. We don't know why.");
+				     this.setMsgFromBackend("Cannot use database. We don't know why.");
 				     break;
 				 } // switch
 			     }) // fetch	
 
     }
 
-    
+
+    readAllRows(dbId) {
+	
+	let req = this.makeGetReq();
+
+	console.log("readSchema, req", req);
+
+	this.fetchAndProcess(Routes.readAllRows(this.state.userId,dbId), req, "App.js/readAllRows",
+			     (data, status)=>{
+				 switch (status) {				 
+				 case OK:
+
+				     this.setState({
+					 dbRows: data
+				     });
+
+				     
+				     this.setMsgFromBackend("Database contents retrieved.");
+				     
+				     console.log("readAllRows onnistui");
+				     break;
+				 case FORBIDDEN:
+				     this.setMsgFromBackend("No access to database.");
+				     break;
+				 default:
+				     this.setMsgFromBackend("Could note read database. We don't know why.");
+				     break;
+				 } // switch
+			     }) // fetch	
+
+    }
+
+    showDBname = () => {
+	if (isEmpty(this.state.dbName)) { return([]) }
+	else { return(<span>: <span style={{"fontWeight":"bold"}}> {this.state.dbName} </span></span>) }
+    }
     
     render() {
 
@@ -1019,9 +1649,9 @@ class App extends React.Component {
 			      finalizeSignIn:this.finalizeSignIn,
 			      cancelSignUpIn:this.cancelSignUpIn,
 			      consumeMsgFromBackend:this.consumeMsgFromBackend,
-			      createDB:this.createDB,
-			      cancelCreateDB:this.cancelCreateDB,
-			      chooseDB:this.chooseDB,
+			      createSchema:this.createSchema,
+			      cancelCreateSchema:this.cancelCreateSchema,
+			      readSchema:this.readSchema,
 			     };
 
 	switch (this.state.pageState) {
@@ -1044,7 +1674,7 @@ class App extends React.Component {
 		<NavBar appState={this.state} appFuns={functionList}/>
 
 		<Box m={2}>
-	    <ExpansionPanel>
+		<ExpansionPanel onChange={this.consumeMsgFromBackend}>
 		<ExpansionPanelSummary
 	    expandIcon={<ExpandMoreIcon />}
             aria-controls="panel1a-content"
@@ -1078,8 +1708,8 @@ class App extends React.Component {
 	       </Typography>
 		</ExpansionPanelDetails>
 
-	    	    </ExpansionPanel>
-		<ExpansionPanel disabled={(!this.state.dbId)}>
+	    	    </ExpansionPanel >
+		<ExpansionPanel disabled={(!this.state.dbId)} onChange={this.consumeMsgFromBackend}>
 
 	    <ExpansionPanelSummary
 	    expandIcon={<ExpandMoreIcon />}
@@ -1094,8 +1724,10 @@ class App extends React.Component {
 	       </Typography>
 		</ExpansionPanelDetails>
 
-	    	    </ExpansionPanel>
-		<ExpansionPanel disabled={(!this.state.dbId)}>
+	    	    </ExpansionPanel >
+		<ExpansionPanel disabled={(!this.state.dbId)
+					  || (this.state.userRole!=="editor")}
+	    onChange={this.consumeMsgFromBackend}>
 
 	    <ExpansionPanelSummary
 	    expandIcon={<ExpandMoreIcon />}
@@ -1111,7 +1743,7 @@ class App extends React.Component {
 	       </Typography>
 		</ExpansionPanelDetails>
 	    </ExpansionPanel>
-		<ExpansionPanel disabled={(!this.state.dbId)}>
+		<ExpansionPanel disabled={(!this.state.dbId)} onChange={this.consumeMsgFromBackend}>
 
 	    <ExpansionPanelSummary
 	    expandIcon={<ExpandMoreIcon />}
@@ -1119,7 +1751,7 @@ class App extends React.Component {
             id="panel5a-header"
 		>
 		
-		<Typography color="primary" >Database contents</Typography>
+		<Typography color="primary" >Database contents{this.showDBname()}</Typography>
 		</ExpansionPanelSummary>
 		<ExpansionPanelDetails>
 		<Typography component="div">
@@ -1145,72 +1777,6 @@ class App extends React.Component {
 
 
   
-
-    //======================================================================
-    getDBlist = () =>{	
-            let req = makeGetReq();
-	console.log("getDBlist alota ");
-
-	this.fetchAndProcess('/epdb/meta/', req, "App.js/getDBlist", (data) => {
-
-	    console.log("getDBlist data ",data.dbNames)
-	    
-	    let newState = StateHelper.copyStateWithMods(this.state, "dbNames", data.dbNames);
-	    //let newState = this.state;
-	    //console.log("xxx=",data.dbNames.map((name)=>{return(name)}))
-	    //newState.dbNames = data.dbNames.map((name)=>{return(name)});
-	    this.setState(newState);
-	    //console.log("getDBlist/tila ",this.state)
-	} );     
-    } // get content
-
-    
-    //======================================================================
-    getDBinfo = () => {
-
-        let req = {
-            method: "GET",
-            mode: "cors",
-            headers: {"Content-type":"application/json"}
-        }
-
-	
-	this.fetchAndProcess('/epdb/meta/'+this.state.dbId, req, "App.js/getDBinfo", (data) => {
-	    let newState = StateHelper.copyStateWithMods(this.state, "currentDBname", data.currentDBname);
-	    newState = StateHelper.copyStateWithMods(newState, "dbTemplate", data.dbTemplate);
-	    this.setState(newState);
-
-
-	} );     
-    } // get content
-
-
-    //======================================================================
-    getDBcontent = () => {
-
-        let req = {
-            method: "GET",
-            mode: "cors",
-            headers: {"Content-type":"application/json"}
-        }
-
-	this.fetchAndProcess('/epdb/content/'+this.state.userId+"/"+this.state.dbId, req, "App.js/getDBcontent", (data) => {
-
-	    //	    console.log('S1',this.state)
-	    let newState = StateHelper.copyStateWithMods(this.state, "dbRows", data);
-	    this.setState(newState);
-	    //	    	    console.log('S2',this.state)
-	    
-	} );     
-    } // get content
-
-
-    //======================================================================
-    // elinkaaren osa
-    componentDidMount() {
-	this.getDBlist();
-    }
-
     //======================================================================
     changeDBState = (cmd, info) => {
 	switch (cmd) {
@@ -1273,7 +1839,7 @@ class App extends React.Component {
     }
 
     //======================================================================
-    chooseDB = (dbId) => {
+    readSchema = (dbId) => {
 
 	// oletustietokanta on valittava täällä koska:
 	// tätä kutsutaaan myös login-tilassa jossa on
