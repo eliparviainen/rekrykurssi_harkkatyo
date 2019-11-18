@@ -45,7 +45,7 @@ function isEmpty(obj) {
 }
 
 
-// zzz
+
 class ChooseDBarea extends React.Component {
 
     constructor(props) {
@@ -318,7 +318,9 @@ class CreateDBarea extends React.Component {
 	    fieldTypeOptions.push(<MenuItem key={typeName} value={typeName}>{typeName}</MenuItem>)
 	}
 	
-	       
+
+	console.log("BUGI: alkuarvo select:issä näkyy vain ekaa kenttää lisätessä, reset puuttuu");
+	
 	return(
 		<Paper elevation={5}>
 	       <Box p={2} fontWeight="fontWeightBold">
@@ -485,25 +487,25 @@ class SettingsArea extends React.Component {
 }
 
 
+/*
 MENOSSA TÄSSÄ
 KESKEN
+enum-tyyppien käsittely (edit/view)
 laita paikalleen funktiokutsut
 alota kutsua backendia
 kato kannalla jossa kaikki kenttätyypit
+*/
 
 class AddRowArea extends React.Component {
     
     render() {
 		    return(
 <div>	    
-
-			   
-			    <span className="KESKEN"> PUUTTUU: anna luonnista kuittausviesti (areaclose samalla nollaa tilan, tuskin haittaa) </span>
-
+			  
 			    <Row mode="add" dbTemplate={this.props.appState.dbTemplate}
 			jsonrow={RowContents.emptyRow(this.props.appState.dbTemplate)}
 			userId={this.props.appState.userId}
-			sendUpDBchange={()=>{console.log("PUUTTUU: this.props.sendUpDBchange")}}
+			appFuns={this.props.appFuns}
 			    />
 			   
 			    <Box mt={2}>
@@ -529,7 +531,10 @@ export class RowContents  extends React.Component
 // ============================================================
 {
 
-
+    constructor(props) {
+	super(props);
+	this.state = {indexInMenu: 0}
+    }
 
     static emptyRow(template) {
 	// this.props.appState.dbTemplate
@@ -549,8 +554,80 @@ export class RowContents  extends React.Component
 	return(newRow);
     }
 
+
+        setIndex = (event) => {
+	this.setState({indexInMenu:event.target.dataset.index});	
+    }
+
+
+    renderSimpleInput = (mode, key, index, typeTag, valueTag, multiline) => {
+	if (mode === "edit" || mode === "add") {
+	    if (!multiline) { multiline=false; }
+	    if (typeTag==="URL") { typeTag="string" }
+	return(
+				<TableRow key={index}>
+			    
+			    <TableCell>
+			    <DDTinputLabel>{key}</DDTinputLabel>
+		<OutlinedInput type={typeTag}
+	    name={key}
+	    multiline={multiline}
+			value={valueTag}
+			onChange={this.props.change} />
+			    </TableCell>
+			    </TableRow>
+	)
+	} else {
+
+	    let st = (typeTag==="URL")?{"fontStyle":"italic"}:{};
+	    return( <TableRow key={index}><TableCell style={st} multiline={multiline}>&nbsp;{valueTag}</TableCell></TableRow>)
+	}
+    }
+
+
+			
+    renderEnumInput = (mode, key, index, enumName, templateEnums) => {
+
+	if (mode === "edit" || mode === "add") {
+	let optionTags = templateEnums[enumName].map(
+	    (enumval, index) => {
+		return(<MenuItem key={index} value={enumval} name={enumval}
+		       data-index={index} onMouseEnter={this.setIndex}>
+		       {enumval}</MenuItem>);
+	    }) // map
+
+
+
+	    
+	//console.log( optionTags );
+	return(
+	    		<TableRow key={index}>
+			    
+			    <TableCell>
+		<DDTinputLabel>{key}</DDTinputLabel>
+
+		<FormControl variant="outlined" style={{minWidth:"10em"}}>
+	    <Select value={templateEnums[this.state.indexInMenu].name} onchange={this.props.change}>	
+		{optionTags}
+	    </Select>
+		</FormControl>
+			    </TableCell>
+		</TableRow>
+	)
+    } else {
+	
+	return(
+	    		<TableRow key={index}>			    
+		<TableCell>{this.props.jsonrow[key]}			 
+			    </TableCell>
+		</TableRow>
+	)
+		    
+    }
+    }
+
     
-    renderContentsForEdit = () => {
+    render = () => {
 
 	
 	let fieldnames = [];
@@ -580,49 +657,20 @@ export class RowContents  extends React.Component
 		//this.wrapWithTitle(key, () => {
 		switch (this.props.dbTemplate.dbFieldTypes[key]) {
 		case "string":
-
-		    //console.log("RowCedit/in",this.props.jsonrow)
-		    //console.log(key)
-
-		    wideElems.push(
-			<TableRow key={index}>
-			    
-			    <TableCell>
-			    <DDTinputLabel>{key}</DDTinputLabel>
-			    <OutlinedInput type="text"			    
-			name={key}
-			value={this.props.jsonrow[key]}
-			onChange={this.props.change} />
-			    </TableCell>
-			    </TableRow>
-
-		    )
+		    wideElems.push(this.renderSimpleInput(this.props.mode, key, index, "text", this.props.jsonrow[key]))
 		    break;
-		    
+
+		case "URL":
+		    wideElems.push(this.renderSimpleInput(this.props.mode, key, index, "URL", this.props.jsonrow[key]))
+		    break;
+
 		case "text":
-		    wideElems.push(				
-			    <div className="editField" key={index}>
-			    <div className="editFieldTitle">{key}</div>
-			    <input type="textarea"			    
-			name={key}
-			value={this.props.jsonrow[key]}
-			onChange={this.props.change} /></div>)
+		    let multiline=true;
+		    wideElems.push(this.renderSimpleInput(this.props.mode, key, index, "text", this.props.jsonrow[key], multiline));
 		    break;
-
 		    			
-		    case "number":
-
-			// testivaiheessa näitä on kun kentässä lukee "number23" tai jotain
-			let numval = parseInt(this.props.jsonrow[key],10);
-			numval = isNaN(numval) ? 0 : numval;
-			
-		    narrowElems.push(
-				<div className="editField" key={index}>
-				<div className="editFieldTitle">{key}</div>
-				<input type="number"
-			    name={key}
-			    value={numval}
-			    onChange={this.props.change} /></div>)
+		case "number":
+		    narrowElems.push(this.renderSimpleInput(this.props.mode, key, index, "number", this.props.jsonrow[key]));
 		    break;
 		    
 		default:
@@ -631,24 +679,11 @@ export class RowContents  extends React.Component
 			
 			console.log("TESTAAMATONTA KOODIA");
 			console.log(this.props.dbTemplate.dbFieldTypes[key])
-
-			let enumName = this.props.dbTemplate.dbFieldTypes[key];
 			console.log("if ",this.props.dbTemplate.dbFieldTypes[key])
 			console.log("if ",this.props.dbTemplate.enums[enumName])
-			
-			let optionTags = this.props.dbTemplate.enums[enumName].map(
-			    (enumval, index) => {
-				return(<option key={index} value={enumval} name={enumval} >{enumval}</option>);
-			    }) // map
 
-			//console.log( optionTags );
-			return(
-				<div className="editField" key={index}>
-				<div className="editFieldTitle">{key}</div>
-				<select>
-				{optionTags}
-			    </select>
-				</div>)
+			let enumName = this.props.dbTemplate.dbFieldTypes[key];
+			narrowElems.push(this.renderEnumInput(this.props.mode, key, index, enumName,  this.props.dbTemplate.enums));
 		    } // enum-tyyppi
 		    else {
 			console.log("row edit/add: unknown field type, skip");
@@ -665,8 +700,8 @@ export class RowContents  extends React.Component
 		<TableBody>
 		<TableRow><TableCell>
 		{wideElems}
-		</TableCell></TableRow>
-		<TableRow><TableCell>
+		</TableCell>		
+		<TableCell>
 		{narrowElems}
 		</TableCell></TableRow>
 		</TableBody>
@@ -676,77 +711,6 @@ export class RowContents  extends React.Component
 
     }
 
-    renderContentsForView = () => {
-	
-	let fieldnames = [];
-	for (let key in this.props.dbTemplate.dbFieldTypes) { fieldnames.push(key); 
-						      }
-
-	let wideElems = fieldnames.map(
-	    (key, index) => {
-
-		// &nbsp; on tilapäinen kludge joka varaa tilaa tyhjille
-		// kentille; ongelma poistuu toivottavasti kun lisää ui-kirjaston
-		switch (this.props.dbTemplate.dbFieldTypes[key]) {
-		case "string":
-		    return( <TableRow key={index}><TableCell>&nbsp;{this.props.jsonrow[key]}</TableCell></TableRow>)
-		case "URL":
-		    return( <TableRow key={index}><TableCell style={{"fontStyle":"italic"}}>&nbsp;{this.props.jsonrow[key]}</TableCell></TableRow>)
-		case "text":
-		    return( <TableRow key={index}><TableCell>&nbsp;{this.props.jsonrow[key]}</TableCell></TableRow>)
-		default:
-		    return(<TableRow key={index}></TableRow>) //<span key={index}/>)
-		}
-	    })
-
-
-
-		
-	let enumTypes = [];
-	for (let typeName in this.props.dbTemplate.enums) {
-	    enumTypes.push(typeName);
-	}
-		
-	let narrowElems =
-	    fieldnames.map(
-		(key, index) => {
-
-
-
-		    if (enumTypes.includes(this.props.dbTemplate.dbFieldTypes[key])) {
-			return( <div key={index}> {key}: {this.props.jsonrow[key]} </div>)
-		    }
-
-
-		    
-		    switch (this.props.dbTemplate.dbFieldTypes[key]) {
-		    case "enum":
-			return( <div key={index}> {key}: {this.props.jsonrow[key]} </div>)
-		    case "number":
-			return( <div key={index}> {key}: {this.props.jsonrow[key]} </div>)
-		    default:
-			return(<span key={index}/>)
-		    }
-		}) // map
-
-
-	return(<div>
-	       <div className="wideElemsBox"><Table><TableBody>{wideElems}</TableBody></Table></div>
-	       <div className="narrowElemsBox">{narrowElems}</div>
-	       </div>)
-    }//render for view
-
-    render() {
-
-//console.log("RowCont:",this.props.jsonrow)
-	
-	if (this.props.mode === "edit" || this.props.mode === "add") {
-	    return(this.renderContentsForEdit()) 
-	}
-	    return(this.renderContentsForView())
-	    
-    
-}
 }
 
 // ============================================================
@@ -1107,6 +1071,7 @@ class LoginPage extends React.Component {
 
     constructor(props) {
 	super(props);
+	this.props.appFuns.consumeMsgFromBackend();
 	this.state = {userName: "", password: "",buttonDisabled:true}
     }
   
@@ -1518,6 +1483,7 @@ class App extends React.Component {
 				     // 
 				     console.log("KESKEN: kun dbvalinta valmis, just luotu tietokanta pitää samalla valita");
 				     this.readAllSchemas();
+				     this.readSchema(data.dbId);
 				     break;
 				 default:
 				     this.setMsgFromBackend("Could not create database. We don't know why.");
