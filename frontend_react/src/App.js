@@ -484,32 +484,40 @@ class SettingsArea extends React.Component {
 
 }
 
+
+MENOSSA TÄSSÄ
+KESKEN
+laita paikalleen funktiokutsut
+alota kutsua backendia
+kato kannalla jossa kaikki kenttätyypit
+
 class AddRowArea extends React.Component {
-
+    
     render() {
+		    return(
+<div>	    
 
-	if (!this.props.appState.dbId) {
-	    if (DEBUG) {
-		return(<div style={debugstyle}> debug: AddRowArea ei näy koska tietokantaa ei ole valittu </div>)	    }	    
-	    return([])	    
-	}
-	
-	
-	if (this.props.appState.userRole!=="editor") {
+			   
+			    <span className="KESKEN"> PUUTTUU: anna luonnista kuittausviesti (areaclose samalla nollaa tilan, tuskin haittaa) </span>
 
-	    if (DEBUG) {
-		return(<div style={debugstyle}> debug: AddRowArea ei näy koska käyttäjä ei ole editor-roolissa vaan roolissa {this.props.appState.userRole} </div>)
-	    }
-	    
-	    return([])
-	}
+			    <Row mode="add" dbTemplate={this.props.appState.dbTemplate}
+			jsonrow={RowContents.emptyRow(this.props.appState.dbTemplate)}
+			userId={this.props.appState.userId}
+			sendUpDBchange={()=>{console.log("PUUTTUU: this.props.sendUpDBchange")}}
+			    />
+			   
+			    <Box mt={2}>
+	    <Typography component="span" color="secondary">{this.props.appState.msgFromBackend}</Typography>
+	    </Box>
+		
 
-	return(
-		<div> AddRowArea </div>
+	    </div>
 	)
-	
 
-	}
+
+    }
+
+    
 }
 
 
@@ -524,7 +532,7 @@ export class RowContents  extends React.Component
 
 
     static emptyRow(template) {
-	// this.props.dbTemplate
+	// this.props.appState.dbTemplate
 	let newRow = {};
 	for (let key in template.fieldTypes)
 	{ 	   
@@ -544,83 +552,88 @@ export class RowContents  extends React.Component
     
     renderContentsForEdit = () => {
 
-
-    /*
-      wrapWithTitle = (title, block) => {
-      return({block})
-      console.log(title)
-      console.log(block())
-      return(
-      
-      )
-      }
-    */
-
-
 	
 	let fieldnames = [];
+	let enumTypes = [];
 
-
-	//console.log("RowCedit",this.props.jsonrow)
+	console.log("RowCedit jsonrow",this.props.jsonrow)
+	console.log("RowCedit template",this.props.dbTemplate)
 
 	
-	for (let key in this.props.dbTemplate.fieldTypes) { fieldnames.push(key); }
+	for (let key in this.props.dbTemplate.dbFieldTypes) { fieldnames.push(key); }
+	for (let typeName in this.props.dbTemplate.enums) { enumTypes.push(typeName); }
 	
-	let wideElems = fieldnames.map(
-	    (key, index) => {
+	console.log("enums=",enumTypes)
+	
+	
+	console.log("RowCedit kentät",fieldnames)
+
+	let wideElems = [];
+	let narrowElems = [];
+
+	
+	fieldnames.forEach( (key, index) => {
+
+		console.log("RowCedit key-"+index,key)
+		console.log("RowCedit type-"+index,this.props.dbTemplate.dbFieldTypes[key])
 		
 		//this.wrapWithTitle(key, () => {
-		switch (this.props.dbTemplate.fieldTypes[key]) {
+		switch (this.props.dbTemplate.dbFieldTypes[key]) {
 		case "string":
 
 		    //console.log("RowCedit/in",this.props.jsonrow)
 		    //console.log(key)
 
-		    return(
-			    <div className="editField" key={index}>
-			    <div className="editFieldTitle">{key}</div>
-			    <input type="text"			    
+		    wideElems.push(
+			<TableRow key={index}>
+			    
+			    <TableCell>
+			    <DDTinputLabel>{key}</DDTinputLabel>
+			    <OutlinedInput type="text"			    
 			name={key}
 			value={this.props.jsonrow[key]}
-			onChange={this.props.change} /></div>
-		    )
+			onChange={this.props.change} />
+			    </TableCell>
+			    </TableRow>
 
+		    )
+		    break;
+		    
 		case "text":
-		    return(				
+		    wideElems.push(				
 			    <div className="editField" key={index}>
 			    <div className="editFieldTitle">{key}</div>
 			    <input type="textarea"			    
 			name={key}
 			value={this.props.jsonrow[key]}
 			onChange={this.props.change} /></div>)
+		    break;
 
+		    			
+		    case "number":
+
+			// testivaiheessa näitä on kun kentässä lukee "number23" tai jotain
+			let numval = parseInt(this.props.jsonrow[key],10);
+			numval = isNaN(numval) ? 0 : numval;
+			
+		    narrowElems.push(
+				<div className="editField" key={index}>
+				<div className="editFieldTitle">{key}</div>
+				<input type="number"
+			    name={key}
+			    value={numval}
+			    onChange={this.props.change} /></div>)
+		    break;
+		    
 		default:
-		    return(<span key={index}/>)
-		} // switch
-		//}) // titleWrap			     
-	    } //map:n fun	     
-	) // map
+		    
+		    if (enumTypes.includes(this.props.dbTemplate.dbFieldTypes[key])) {
+			
+			console.log("TESTAAMATONTA KOODIA");
+			console.log(this.props.dbTemplate.dbFieldTypes[key])
 
-	
-	let enumTypes = [];
-	for (let typeName in this.props.dbTemplate.enums) {
-	    enumTypes.push(typeName);
-	}
-	console.log("enums=",enumTypes)
-	
-	
-	let narrowElems =
-	    fieldnames.map(
-		(key, index) => {
-
-		    console.log("TESTAAMATONTA KOODIA");
-		    console.log(this.props.dbTemplate.fieldTypes[key])
-		    //let enumInd = enumTypes.indexOf(this.props.dbTemplate.fieldTypes[key]);
-		    if (enumTypes.includes(this.props.dbTemplate.fieldTypes[key])) {
-		    //if (enumInd>=0) {
-
-			let enumName = this.props.dbTemplate.fieldTypes[key];
-			console.log("if ",this.props.dbTemplate.fieldTypes[key])
+			let enumName = this.props.dbTemplate.dbFieldTypes[key];
+			console.log("if ",this.props.dbTemplate.dbFieldTypes[key])
 			console.log("if ",this.props.dbTemplate.enums[enumName])
 			
 			let optionTags = this.props.dbTemplate.enums[enumName].map(
@@ -636,44 +649,37 @@ export class RowContents  extends React.Component
 				{optionTags}
 			    </select>
 				</div>)
+		    } // enum-tyyppi
+		    else {
+			console.log("row edit/add: unknown field type, skip");
 		    }
+		    break;
+		} // switch
+		//}) // titleWrap			     
+	    } //map:n fun	     
+	) // map
 
-		    
-		    switch (this.props.dbTemplate.fieldTypes[key]) {
 
-			
-		    case "number":
-
-			// testivaiheessa näitä on kun kentässä lukee "number23" tai jotain
-			let numval = parseInt(this.props.jsonrow[key],10);
-			numval = isNaN(numval) ? 0 : numval;
-			
-			return(
-				<div className="editField" key={index}>
-				<div className="editFieldTitle">{key}</div>
-				<input type="number"
-			    name={key}
-			    value={numval}
-			    onChange={this.props.change} /></div>)
-		    default:
-			return(<span key={index}/>)
-		    }
-		})
 	
-	
-	return(<div className="KESKEN">
-	       <div className="wideElemsBox">{wideElems}</div>
-	       <div className="narrowElemsBox">{narrowElems}</div>
-	       </div>
+	return( <Table size="small">
+		<TableBody>
+		<TableRow><TableCell>
+		{wideElems}
+		</TableCell></TableRow>
+		<TableRow><TableCell>
+		{narrowElems}
+		</TableCell></TableRow>
+		</TableBody>
+	       </Table>
 	      )
     
 
     }
 
-    renderContentsForShow = () => {
+    renderContentsForView = () => {
 	
 	let fieldnames = [];
-	for (let key in this.props.dbTemplate.fieldTypes) { fieldnames.push(key); 
+	for (let key in this.props.dbTemplate.dbFieldTypes) { fieldnames.push(key); 
 						      }
 
 	let wideElems = fieldnames.map(
@@ -681,15 +687,15 @@ export class RowContents  extends React.Component
 
 		// &nbsp; on tilapäinen kludge joka varaa tilaa tyhjille
 		// kentille; ongelma poistuu toivottavasti kun lisää ui-kirjaston
-		switch (this.props.dbTemplate.fieldTypes[key]) {
+		switch (this.props.dbTemplate.dbFieldTypes[key]) {
 		case "string":
-		    return( <tr key={index}><td>&nbsp;{this.props.jsonrow[key]}</td></tr>)
+		    return( <TableRow key={index}><TableCell>&nbsp;{this.props.jsonrow[key]}</TableCell></TableRow>)
 		case "URL":
-		    return( <tr key={index}><td style={{"fontStyle":"italic"}}>&nbsp;{this.props.jsonrow[key]}</td></tr>)
+		    return( <TableRow key={index}><TableCell style={{"fontStyle":"italic"}}>&nbsp;{this.props.jsonrow[key]}</TableCell></TableRow>)
 		case "text":
-		    return( <tr key={index}><td>&nbsp;{this.props.jsonrow[key]}</td></tr>)
+		    return( <TableRow key={index}><TableCell>&nbsp;{this.props.jsonrow[key]}</TableCell></TableRow>)
 		default:
-		    return(<tr key={index}></tr>) //<span key={index}/>)
+		    return(<TableRow key={index}></TableRow>) //<span key={index}/>)
 		}
 	    })
 
@@ -707,13 +713,13 @@ export class RowContents  extends React.Component
 
 
 
-		    if (enumTypes.includes(this.props.dbTemplate.fieldTypes[key])) {
+		    if (enumTypes.includes(this.props.dbTemplate.dbFieldTypes[key])) {
 			return( <div key={index}> {key}: {this.props.jsonrow[key]} </div>)
 		    }
 
 
 		    
-		    switch (this.props.dbTemplate.fieldTypes[key]) {
+		    switch (this.props.dbTemplate.dbFieldTypes[key]) {
 		    case "enum":
 			return( <div key={index}> {key}: {this.props.jsonrow[key]} </div>)
 		    case "number":
@@ -725,10 +731,10 @@ export class RowContents  extends React.Component
 
 
 	return(<div>
-	       <div className="wideElemsBox"><table><tbody>{wideElems}</tbody></table></div>
+	       <div className="wideElemsBox"><Table><TableBody>{wideElems}</TableBody></Table></div>
 	       <div className="narrowElemsBox">{narrowElems}</div>
 	       </div>)
-    }//render for show
+    }//render for view
 
     render() {
 
@@ -737,7 +743,7 @@ export class RowContents  extends React.Component
 	if (this.props.mode === "edit" || this.props.mode === "add") {
 	    return(this.renderContentsForEdit()) 
 	}
-	    return(this.renderContentsForShow())
+	    return(this.renderContentsForView())
 	    
     
 }
@@ -747,15 +753,16 @@ export class RowContents  extends React.Component
  class RowControls extends React.Component
 // ============================================================
 {
-    renderShowControls = () => {
+    renderViewControls = () => {
 
 	
 	if (this.props.jsonrow._owner === this.props.userId) {
 	    
-	    return(<div>
-		   <div><Button text="Edit" onClick={this.props.toEdit}/></div>
-		   <div><Button text="Remove" onClick={this.props.toRemove}/></div>
-		   </div>
+	    return(
+		    <TableCell>
+		    <Button onClick={this.props.toEdit} variant="outlined" color="primary" size="small">Edit</Button>  
+		    <Button onClick={this.props.toRemove} variant="outlined" color="primary" size="small">Remove</Button>
+		    </TableCell>
 	    )
 	
 	} else {
@@ -771,36 +778,42 @@ export class RowContents  extends React.Component
     renderEditControls = () => {
 
 
-    return(<div>
+	return(
+	    <TableCell>
+		    <Button onClick={()=>{this.props.sendUpEdits(); this.props.finishEdit(); }} variant="outlined" color="primary" size="small">Save</Button>  
+		    <Button onClick={this.props.finishEdit} variant="outlined" color="primary" size="small">Discard edits</Button>
+		    </TableCell>
 	
-	       <div><Button text="Save" onClick={()=>{this.props.sendUpEdits(); this.props.finishEdit(); }}/></div>
-	       <div><Button text="Discard edits" onClick={this.props.finishEdit}/></div>
-	   </div>)
+)
     }
 
     
         renderAddControls = () => {
 	    
 
-	    return(<div>
+	    return(
+		    <TableCell>
 		   <p className="KESKEN"> PUUTTUU: select:ien arvoja ei kirjata minnekään, kantaan menee aina eka arvo </p>
-	       <div><Button text="Add" onClick={()=>{this.props.sendUpEdits(); this.props.finishEdit(); }}/></div>
-	       <div><Button text="Cancel" onClick={this.props.finishEdit}/></div>
-	   </div>)
+
+		    <Button onClick={()=>{this.props.sendUpEdits(); this.props.finishEdit(); }} variant="outlined" color="primary" size="small">Add</Button>  
+		    <Button onClick={this.props.finishEdit} variant="outlined" color="primary" size="small">Cancel</Button>
+		    </TableCell>
+
+
+)
     }
 
 
-        render() {
-	if (this.props.mode === "edit") {
+    render() {
+	switch (this.props.mode) {
+	case "edit":
 	    return(this.renderEditControls())
-	}
-
-	    if (this.props.mode === "add") {
+	case "add":
 	    return(this.renderAddControls())
-	} 
-	    return(this.renderShowControls())
-	    
-	}
+	default:
+	    return(this.renderViewControls())
+	    	} // switch
+    }
 }
 
 
@@ -811,23 +824,13 @@ export class Row extends React.Component {
 
     constructor(props) {
 	super(props)
-	this.state = { editMode: (this.props.mode==="edit"), removeMode: false, addMode: (this.props.mode==="add"),
+	this.state = { mode: this.props.mode,
 		       jsonrow: this.props.jsonrow
 		     }
-	//console.log("Row constr ",this.props.mode)
-	//console.log("Row constr ",this.props.jsonrow)
     }
 
 
     change = (event) => {
-//	console.log("EI EHKÄ TOIMI, tässä ei synny kopiota jsonrow:sta vaan viite?")
-	//let stateJson = StateHelper.copyStateWithMods(this.state.jsonrow, event.target.name, event.target.value);
-	/*
-	let stateJson = StateHelper.copyStateWithMods(this.state.jsonrow, event.target.name, event.target.value);
-	let state = this.state;
-	state.jsonrow = stateJson;
-	//console.log(stateJson);	console.log(state)
-	*/
 	let newrow = this.state.jsonrow;
 	newrow[event.target.name]=event.target.value;
 	this.setState({jsonrow: newrow});
@@ -852,26 +855,22 @@ export class Row extends React.Component {
 
 
     
-    toEditMode = () => { this.setState({editMode: true, removeMode: false, addMode: false, jsonrow:this.state.jsonrow});
-			 console.log("to edit mode") }
-    toRemoveMode = () => { this.setState({editMode: false, removeMode: true, addMode: false, jsonrow:this.state.jsonrow});
-			   console.log("to remove mode") }
-    toReadMode = () => { this.setState({editMode: false, removeMode: false, addMode: false,jsonrow:this.state.jsonrow });
-			 console.log("to read mode") }
-    toAddMode = () => { this.setState({editMode: false, removeMode: false, addMode: true,jsonrow:RowContents.emptyRow(this.props.dbTemplate) });
-			 console.log("to add mode") }
+    toEditMode = () => { this.setState({mode:"edit"}) }
+    toRemoveMode = () => { this.setState({mode:"remove"}) }
+    toViewMode = () => { this.setState({mode:"view"}) }
+    toAddMode = () => { this.setState({mode:"add"}) }
 
     
     renderRemoveConfirm = () => { return(
 	    <div className="removeConfirm">
-	    <table><tbody><tr><td>
-	    <RowContents mode="show" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow}/>
-	    </td>
-	    <td>
+	    <Table><TableBody><TableRow><TableCell>
+	    <RowContents mode="view" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow}/>
+	    </TableCell>
+	    <TableCell>
 	    <div><Button text="Confirm remove" onClick={()=>{this.sendUpRemove(); this.props.finishRemove(); }}/></div>
 	    <div><Button text="Cancel remove" onClick={this.props.finishRemove}/></div>
-	    </td>	       
-	    </tr></tbody></table>
+	    </TableCell>	       
+	    </TableRow></TableBody></Table>
 
 	</div>
     )
@@ -880,77 +879,85 @@ export class Row extends React.Component {
     
     render() {
 
-	if (this.state.addMode) {
-//	console.log("Row:",this.state.jsonrow)
 
-	    return(<table><tbody><tr><td>
-		    <RowContents mode="add" dbTemplate={this.props.dbTemplate} jsonrow = {this.state.jsonrow}
-		change={this.change}
+	console.log("Row:",this.state.mode)
+
+	switch (this.state.mode) {
+	case "add":
+
+	    return(
+		    <Table><TableBody><TableRow><TableCell>
+		   <RowContents mode="add" dbTemplate={this.props.dbTemplate}
+		   jsonrow = {this.state.jsonrow}
+		   change={this.change}
 		    />
 
-		   		   </td><td>
-		    <RowControls mode="add"
-		dbTemplate={this.props.dbTemplate}
-
-		   
-		finishEdit={this.toAddMode}
-		sendUpEdits={this.sendUpCreate}
-			/>
-		   </td></tr></tbody></table>
-	)
-
-	}
+		   </TableCell><TableCell>
+		    <RowControls mode="add" dbTemplate={this.props.dbTemplate}
+		   finishEdit={this.toAddMode} sendUpEdits={this.sendUpCreate}
+		   />
+		   </TableCell></TableRow></TableBody></Table>
+			  )
 	    
-	
-	if (this.state.editMode)
-	{
-	    return(<table><tbody><tr><td>
+
+	case "edit":
+
+	    return(<Table><TableBody><TableRow><TableCell>
 		   <RowContents mode="edit" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow} change={this.change}/>
 		   <p className="KESKEN"> BUGI: nrokenttään ei voi kirj numeroa; nrokentän muutettu arvo ei näy ainakaan oikein</p>
-		   </td><td>
+		   </TableCell><TableCell>
 		    <RowControls mode="edit" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow}
-		   finishEdit={this.toReadMode}
+		   finishEdit={this.toViewMode}
 		   sendUpEdits={this.sendUpEdits}
 		   />
-		   </td></tr></tbody></table>
+		   </TableCell></TableRow></TableBody></Table>
 	    )
-	}
 
+	    
 
-	if (this.state.removeMode)
-	{
+	case "remove":
+
 	    return(
 			    <div className="removeConfirm">
-		    <table><tbody><tr><td>
-		    <RowContents mode="show" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow}/>
-	    </td>
-	    <td>
-		    <div><Button text="Confirm remove" onClick={()=>{this.sendUpRemove(); this.toReadMode(); }}/></div>
-	    <div><Button text="Cancel remove" onClick={this.toReadMode}/></div>
-	    </td>	       
-	    </tr></tbody></table>
+		    <Table><TableBody><TableRow><TableCell>
+		    <RowContents mode="view" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow}/>
+	    </TableCell>
+	    <TableCell>
+		    <div><Button text="Confirm remove" onClick={()=>{this.sendUpRemove(); this.toViewMode(); }}/></div>
+	    <div><Button text="Cancel remove" onClick={this.toViewMode}/></div>
+	    </TableCell>	       
+	    </TableRow></TableBody></Table>
 
 	</div>
 	   	    
 	    )
-	}
+
+	    
+
+	default:
 
 	return(
 		<div className="KESKEN">
-		<table><tbody><tr>
-		<td>
-		<RowContents mode="show" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow}/>
-		</td>
-		<td>
+		<Table><TableBody><TableRow>
+		<TableCell>
+		<RowContents mode="view" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow}/>
+		</TableCell>
+		<TableCell>
 		<RowControls mode="view"
 	    jsonrow={this.state.jsonrow}
 	    userId={this.props.userId}
 	    toEdit={this.toEditMode}
 	    toRemove={this.toRemoveMode} />
-	       </td>
-		</tr></tbody></table>
+	       </TableCell>
+		</TableRow></TableBody></Table>
 		</div>
 	)
+
+	    
+
+	} // switch
+
+
     } // render
    
 }
@@ -974,16 +981,13 @@ class ContentsArea extends React.Component {
     
     render() {
 
-	// <RowRead key={index} dbTemplate={this.props.dbTemplate} jsonrow={dbrow}/>
-
-
-//	console.log("ContentArea:",this.props.appState.settings)
-
 	/* aina aikajärjestys */
 	this.props.appState.dbRows.sort(this.timestampSortDesc);
 
 	let rows = [];
 	if (this.props.appState.settings.groupBy === "none") {
+
+	    console.log("no group")
 	    
 	    rows = this.props.appState.dbRows.map(
 	    (dbrow,index) => {
@@ -991,18 +995,19 @@ class ContentsArea extends React.Component {
 		//console.log("ContentArea:",dbrow)
 
 		
-		if (this.props.appState.settings.showShared || dbrow._owner === this.props.userId) {
+		if (this.props.appState.settings.showShared || dbrow._owner === this.props.appState.userId) {
 		return(		    
 			<Row key={dbrow._id} mode="view"
-		    dbTemplate={this.props.dbTemplate}
+		    dbTemplate={this.props.appState.dbTemplate}
 		    jsonrow={dbrow}
-		    userId={this.props.userId}
+		    userId={this.props.appState.userId}
 		    sendUpDBchange={this.props.sendUpDBchange}
 			/>
 		)} else { return([]) }
 	    }) // map
 	} // if no grouping
 	else {
+	    console.log("group")
 	    rows = [];
 	    for (let groupingVariableValue in this.props.appState.settings.valueVisibility) {
 		if (this.props.appState.settings.valueVisibility[groupingVariableValue]) {
@@ -1013,12 +1018,12 @@ class ContentsArea extends React.Component {
 
 			    if (dbrow[this.props.appState.settings.groupBy]===groupingVariableValue) {
 
-						if (this.props.appState.settings.showShared || dbrow._owner === this.props.userId) {
+				if (this.props.appState.settings.showShared || dbrow._owner === this.props.appState.userId) {
 				return(
 				    <Row key={dbrow._id} mode="view"
-				dbTemplate={this.props.dbTemplate}
+				dbTemplate={this.props.appState.dbTemplate}
 				jsonrow={dbrow}
-				userId={this.props.userId}
+				    userId={this.props.appState.userId}
 				sendUpDBchange={this.props.sendUpDBchange}
 					/>
 				) } else {return([])}
@@ -1041,34 +1046,19 @@ class ContentsArea extends React.Component {
 			    </div>
 		    );
 		    
-
-
-		    //rows=rows.concat(rows2);
-		    
-		    //console.log(rows2)
-//		    rows.concat( );
-//		    console.log(rows.concat(rows2))
-		    
-		    
-		    //otsikko
-		    //rivit
 	    } // if
 	    } // for
-//	if (rows===[]) { rows=<span/> }
 	}
-	
+
+	console.log('contents',rows)
 	
 	return(
 		<div>
-	     	<div className="areaLabel">
-	    	<span> Content </span>
-		</div>
-
-		<div className="listArea" id="ContentAreaShow">
+		
 		<p className="KESKEN"> PUUTTUU: tyhjien kenttien renderöinti viemään tilaa (ui-kirjasto tehnee?) </p>
 		<p className="KESKEN"> PUUTTUU: rivin merkkaaminen jaetuksi/yksityiseksi</p>
 		{rows}
-	    </div>			 </div>
+	    </div>
 	)
     }
 
