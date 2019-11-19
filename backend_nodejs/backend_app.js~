@@ -1,0 +1,532 @@
+// muista asentaa paikalliseen hakemistoon
+// npm install express
+// npm install mongoose
+const express = require('express');
+const mongoose = require('mongoose');
+require('mongoose-type-url');
+const bcrypt =  require("bcrypt");
+
+
+//const http = require('http');
+const https = require('https');
+const fs = require('fs');
+
+
+DEFAULT_TTL = 1000*60*60;
+
+// ============================================================
+// database interface
+// ============================================================
+
+
+//const DBiface = require('./epdb_dbinterface_feikki');
+const DBiface = require('./epdb_dbinterface_mongoose');
+
+
+mongoDB = 'mongodb://localhost/epdb_databases';
+// optioilla saa deprecationeja pois
+// (jotkut ominaisuudet vanhenneet, nämä sanoo että käyttää uutta)
+mongoose.connect(mongoDB, { useNewUrlParser: true, useUnifiedTopology: true });
+
+/*
+ei nämä kantoja tuhoa vaan muuttujat
+
+try {
+// jos näitä  on enestään niin pois
+mongoose.deleteModel('epdbUser');
+mongoose.deleteModel('epdbDatabaseSchema');
+} catch { console.log("ei kai ole mitään tuhottavaa"); }
+*/
+
+let epdbUserDef = new mongoose.Schema({
+    userName : { type: String, required: true },
+    // ADMIN TULEE POISTUMAAN
+    isAdmin : { type: Boolean, default: false },
+    password : { type: String, required: true },
+});
+
+epdbUser = mongoose.model('epdbUser', epdbUserDef );
+
+let epdbDatabaseSchemaDef = new mongoose.Schema({
+    dbName : { type: String, required: true },
+    _creator : { type: mongoose.Schema.Types.ObjectId, ref: 'epdbUser', required: true },
+    _timestamp: { type: Date, default: Date.now() },
+    dbTemplate : { type: Object, required: true }
+});
+
+
+epdbDatabaseSchema = mongoose.model('epdbDatabaseSchema', epdbDatabaseSchemaDef );
+
+
+let epdbSessionDef = new mongoose.Schema({
+    userId : { type: mongoose.Schema.Types.ObjectId, ref: 'epdbUser', required: true },
+    token : { type: String, required: true },
+    livesUntil : { type: Date, required: true },
+    logoutAfterMilliseconds : { type: Number, default: DEFAULT_TTL }
+});
+
+epdbSession = mongoose.model('epdbSession', epdbSessionDef );
+
+
+// ========================================
+// feikkikannat
+
+let dbRows_tmp_pohja = [{"field1": "text11",  "field2": "f2-enum1", "field3": "textarea13", "field4": 14, "field5": "f5-enum1"},
+	  {"field1": "text21",  "field2": "f2-enum2", "field3": "textarea23", "field4": 24, "field5": "f5-enum1"},
+	  {"field1": "text31",  "field2": "f2-enum2", "field3": "textarea33", "field4": 34, "field5": "f5-enum3"},
+	  {"field1": "text41",  "field2": "f2-enum3", "field3": "textarea43", "field4": 44, "field5": "f5-enum3"}
+	 ];
+
+
+function DBfindSessionByUID(userId, readyFun) {
+    epdbSession.find({userId: userId}, (err, sessionEntry) => {
+
+	if (!sessionEntry) { readyFun(err,[]) }
+	if (sessionEntry.length>1) {
+	    console.log("PÄÄTÄ JO: saako samalla käyttäjällä olla auki useampi sessio?");
+	}
+	sessionEntry = sessionEntry[0];
+	
+	    readyFun(err,sessionEntry)	
+    }) // find
+}
+
+
+function DBfindUserByName(userName, readyFun) {
+    epdbUser.find({userName: userName}, (err, userEntry) => {
+
+	console.log("DBfindUserByName ettii käyttäjää ",userName)
+	if (!userEntry) { readyFun(err,[]) }
+	
+	if (userEntry.length>1) {
+	    console.log("PUUTTUU: ei saisi olla useampaa samannimistä käyttäjää (feikkikannassa voi olla)");
+	}
+	userEntry = userEntry[0];
+	
+	readyFun(err,userEntry._id)	
+    }) // find
+}
+
+const tmpUserName = "se-ainut-käyttäjä";
+const tmpPassword = "password";
+DBfindUserByName(tmpUserName, function(err, userEntry) {
+
+    if (!userEntry) {
+	let tmpuser = new epdbUser( { userName: tmpUserName, isAdmin: true, passoword: tmpPassword });
+    
+	tmpuser.save(function(err, res) {
+	    if (err) throw err;
+	    console.log('tilapäiskäyttäjä '+res.userName+' luotu id:llä'+res._id);
+        }) // save
+
+    } // jos ei ole jo
+    else {
+	console.log("käyttäjän "+tmpUserName+" id on "+userEntry._id);
+    }
+}) // findByName
+
+
+
+dbTemplate2 = {
+    "fieldTypes": { "field1": "string", "field2": "enum2", "field3": "text", "field4": "number", "field5": "enum5"},
+    "enums": {"enum2": ["f2-enum1", "f2-enum2", "f2-enum3"],
+	      "enum5": ["f5-enum1", "f5-enum2", "f5-enum3"] 
+	     } 
+}; // templ
+
+
+
+
+DBiface.DBlistDBs( (dbNames) => {
+
+    if (dbNames.length>1) return([]);
+
+    let dbName = "Web Link Database";
+    db1 = mongooseCreateDatabase(
+	dbName,
+	dbTemplate2,
+	tmpuser);
+
+    // tämä on tilapäistä, siksi voi kutsua yhen
+    // rivin lisääjää monta kertaa ilman että nolottaa
+   
+        console.log("lisää roskaa ekaan kantaan valmiiksi");
+    for (let i=0; i<dbRows_tmp_pohja.length; i++) {
+	let rowContents = dbRows_tmp_pohja[i];
+	mongooseInsertRow(db1, rowContents, tmpuser.id);
+    }
+
+
+db2 = mongooseCreateDatabase(
+	"Web Link Database (2)",
+     dbTemplate2,
+    tmpuser);
+
+        console.log("lisää saman roskan tokaan kantaan valmiiksi");
+    for (let i=0; i<dbRows_tmp_pohja.length; i++) {
+	let rowContents = dbRows_tmp_pohja[i];
+	mongooseInsertRow(db2, rowContents, tmpuser.id);
+    }
+
+    
+} );
+
+console.log("KESKEN: nyt näkyy kaikki shared-by-another vaikka eikö ole omia?")
+
+
+// ==================================================
+
+// This line starts a server that uses
+// Express framework with Node.JS
+let app = express();
+
+// Simple Usage (Enable All CORS Requests)
+// mitkään ('Access-Control-Allow-Origin','*')-asettelut ei toimineet POSTille 
+//app.use(cors());
+
+// tämä pitää olla, muuten ei selaimen lähettämän POSTin body päädy req.body:ksi
+app.use(express.json());
+
+//app.use(express.urlencoded({ extended: false }));
+
+
+// ============================================================
+// routes
+// ============================================================
+
+console.log("HUOM nyt ei ole ollenkaan /-reittiä");
+app.get('/epdb/meta', dblist_get);
+app.get('/epdb/meta/:dbId', dbinfo_get);
+app.post('/epdb/meta/:userId', dblist_post);
+app.post('/epdb/login', login_post);
+app.get('/epdb/content/:userId/:dbId', content_get);
+app.post('/epdb/content/:userId/:dbId', content_post);
+app.put('/epdb/content/:userId/:dbId/:rowId', content_put);
+app.delete('/epdb/content/:userId/:dbId/:rowId', content_delete);
+
+
+// ============================================================
+// mongoose interface
+// ============================================================
+
+// https://coderwall.com/p/_g3x9q/how-to-check-if-javascript-object-is-empty
+function isEmpty(obj) {
+    for(let key in obj) {
+        if(obj.hasOwnProperty(key))
+            return false;
+    }
+    return true;
+}
+
+
+
+function mongooseInsertRow(dbSchema, rowContents, userId) {
+   
+    let modelName = "schemaFor"+dbSchema.id;
+    let schemaDefJson = mongooseJsonFromTemplate(dbSchema.dbTemplate);
+    let newDB = mongoose.model(modelName, schemaDefJson);
+
+    //console.log('kanta '+dbSchema.dbName+' luotu (jos ei sitä ollut jo)');
+
+	// 
+//    LISÄÄ TÄSSÄ ROSKAA KANTAAN    (tapahtuuko kanta sillon mongossa?)
+
+
+    rowContents = epdbAddDefaultFields(rowContents, userId)
+	
+    // pitäisi vastata new Luokka -komentoa?
+	//newRow = Object.create(newDB); // , rowContents
+    newRow = new newDB(rowContents);
+
+    //let teese = false;
+        let teese = true;
+    if (teese) {
+    //	TARKISTA RIVIN MUOTO, LAITTAA NYT SUORAAN ROSKAKANNASTA, ERI KENTÄT
+    newRow.save(function(err, res) {
+	if (err) throw err;
+	//console.log('rivi '+newRow+' lisätty');
+	console.log('rivi lisätty kantaan '+modelName);
+    });
+
+    }
+
+    // muuten valittaa että on jo
+    mongoose.deleteModel(modelName);
+    //	console.log("rivi "+i+" ",newRow)
+}
+
+    
+function mongooseCreateDatabase(dbName, dbTemplate, userEntry) {
+
+    // edellä pitää olla tarkistettu:
+    // - tietokantaa ei ennestään ole
+    // - käyttäjällä on lupa luoda kantoja
+
+    
+let dbSchema = new epdbDatabaseSchema(
+    {
+	dbName: dbName,	
+	dbTemplate: dbTemplate,
+	_creator: userEntry
+    }
+);
+dbSchema.save(function(err, res) {
+                if (err) throw err;
+                console.log('kanta '+res.dbName+' lisätty listaan');
+        });
+
+//console.log(schemaDefJson)
+
+    return(dbSchema) //, modelName: modelName});
+}
+
+function epdbAddDefaultFields(record, userId) {
+    record["_timestamp"] = Date.now();
+    record["_owner"] = userId;
+    console.log("KESKEN: _isPublic ei riitä julkisuusmekanismiksi (private,shared,moderator-locked")
+    record["_isPublic"] = true;
+
+    return(record)
+}
+    
+function mongooseJsonFromTemplate(templateForAddingDB) {
+let schemaDefJson = {};
+let enumTypeList = [];
+for (let fieldname in templateForAddingDB.enums) { enumTypeList.push(fieldname) };
+//console.log(enumTypeList)
+//console.log(enumTypeList.includes("enum2"))
+schemaDefJson["_timestamp"] = { type: Date, default: Date.now() };
+schemaDefJson["_owner"] = { type: mongoose.Schema.Types.ObjectId, ref: 'epdbUser', required: true };
+schemaDefJson["_isPublic"] =  { type: Boolean, default: false };
+
+for (let fieldname in templateForAddingDB.fieldTypes) {
+
+    // enumTypeList.includes(templateForAddingDB.fieldTypes[fieldname])) {
+    let enumInd = enumTypeList.indexOf(templateForAddingDB.fieldTypes[fieldname]);
+    if (enumInd>=0) {
+	schemaDefJson[fieldname] = { type: String, enum: templateForAddingDB.enums[enumTypeList[enumInd]] };
+
+    } else {
+	switch(templateForAddingDB.fieldTypes[fieldname]) {
+	case "text":
+	case "string":
+	    schemaDefJson[fieldname] = { type: String };
+	    break;
+	case "URL":
+	    console.log("KESKEN: joko frontendissä on URL-render?");
+	    // tarttee: npm install mongoose-type-url
+	    schemaDefJson[fieldname] = { type: mongoose.SchemaTypes.Url };
+	    break;
+	case "number":
+	    schemaDefJson[fieldname] = { type: Number };
+	    break;
+	}
+    }
+//    schemaDefJson[fieldname] = 
+}
+//    console.log(schemaDefJson)
+    return(schemaDefJson);
+}
+
+
+
+// ============================================================
+// HTTP requests
+// ============================================================
+
+
+
+//app.put('/epdb/meta/:userId', dblist_put);
+function dblist_post(req, res) {
+  
+    console.log("MUISTA: kannat tunnistetaan nimillä kun en jaksa päivittää vanhaa koodia, nimien oltava uniikkeja");
+
+    console.log("BE dblistpost ",req.body)
+    DBiface.DBcreate(req.params.userId, req.body, () => {
+	return res.status(200).json({ "msg": "luotu uusi kanta"})
+    });
+    /*
+    // nää olis parempi kirjottaa .then-ketjuksi mutta pistän toimimaan ensin edes jotenkin
+    DBiface.DBcreate(req.params.userId, req.body, () => {
+
+	console.log("create sendfun");
+	DBiface.DBlistDBs(
+	    (dbNames) => {
+		console.log("create->dblists sendfun");
+	    console.log(dbNames)
+		return res.status(200).json({ "dbNames": dbNames})
+	    }
+	);
+    });
+*/
+}
+
+function dblist_get(req, res) {
+    //  console.log("sending", { "title": dbTitle, "template": dbTemplate})
+
+    //    return (DBlistDBs(res));
+
+    console.log("kutsuttu dblist_get");
+    
+    DBiface.DBlistDBs(
+	(dbNames) => {
+	    console.log(dbNames)
+	return res.status(200).json({ "dbNames": dbNames})
+	}
+    );
+}
+
+
+function dbinfo_get(req, res) {
+    DBiface.DBinfo(req.params.dbId, (dbTitle, dbTemplate) => {
+	return res.status(200).json({ "dbTitle": req.params.dbId+"/"+dbTitle, "dbTemplate": dbTemplate});
+    }
+	  )}
+
+
+function login_post(req, res) {
+
+    console.log("KESKEN: virhekäsittelyt puuttuu niin tästä kun muualtakin");
+    
+    DBfindUserByName(req.body.userName, (err, user) => {
+
+	DBfindSessionByUID(user, (err, sessionID) => {
+	    
+	    if (!sessionID) {
+
+		let aux = 'abcdefghijklmnopqrstuvxyz0123456789';
+		newToken = 'TOKEN';
+		for (let i=0; i<16; i++) {
+		    newToken.push(aux[Math.floor(Math.rand()*aux.length)]);
+		}
+		console.log(newToken)
+	
+	let newSession = new epdbSession({
+	    userId : user,
+	    token : newToken,
+	    livesUntil : Date.now + DEFAULT_TTL,
+	    logoutAfterMilliseconds : DEFAULT_TTL
+	});
+		newSession.save(function(err, session) {
+		    
+		    return res.status(200).json({userId: user._id, token: session.token})
+		}) // save
+	    } else {
+		
+		return res.status(200).json({userId: user._id, token: session.token})		
+		
+	    }
+    
+	}) // find session by userId
+    }) // find userId by name
+}
+
+
+function content_get(req, res) {
+    DBiface.DBgetAllRows(req.params.userId, req.params.dbId, (dbRows) => {
+	//console.log("DBiface.DBgetAllRows valmis", dbRows)
+	return res.status(200).json(dbRows);
+    })
+		}
+
+
+function content_post(req, res) {
+
+    let userId = req.params.userId;
+    let newItem = DBiface.DBcreateSanitizedRow(userId, tmpLastRowId+1, req.body);
+    tmpLastRowId++;
+
+    if (DBiface.DBaddRow(newItem))
+    {
+    return res.status(200).json(newItem);
+    } else
+    {
+	return res.status(404).json({message: "riviä ei voitu lisätä"});
+    }
+    
+}
+
+function content_put(req, res) {
+
+    console.log("nodeserveri/content_put: HUOM ei välttämättä aina ole transaktio")
+
+    // koska on string, tietokannassa on nroita
+    let rowId = parseInt(req.params.rowId,10);
+    let userId = req.params.userId;
+
+    let oldRow = DBiface.DBgetRow(userId, rowId);
+	
+    if (DBiface.DBdeleteRow(userId, rowId)) {
+	newItem = DBiface.DBcreateSanitizedRow(userId, rowId, req.body);
+	if (DBiface.DBaddRow(newItem)) {
+	    // onnnistui
+	    return res.status(200).json(newItem);
+	} else {
+	    // pieleen, yrittää rollbackia
+	    if (DBiface.DBaddRow(oldRow)) {
+		return res.status(404).json({message:"riviä ("+rowId+") ei voitu päivittää mutta vanha arvo palautettiin"});
+	    } else {
+		// rollback epäonnistui
+		return res.status(500).json({message:"vituiksi meni; rivi "+rowId+" tuhottiin mutta uutta arvoa ei kirjoitettu"});
+	    }
+	    
+	}
+    } else {
+	return res.status(404).json({message:"päivitettävää riviä ("+rowId+") ei löytynyt"});
+    }
+
+}
+
+function content_delete(req, res) {
+
+    console.log(req.params.rowId)
+
+
+    // koska on string, tietokannassa on nroita
+    let rowId = parseInt(req.params.rowId,10);
+    let userId =req.params.userId;
+
+    if (DBiface.DBdeleteRow(userId, rowId)) {
+	res.status(200).json({});
+    }else{
+	return res.status(404).json({message:"poistettavaa riviä ("+rowId+") ei löytynyt"});
+    }
+
+}
+
+// ============================================================
+
+
+app.get('/', function (req, res) {
+        res.send("Hello World! -- muista laittaa /-reitti myös varsinaiseen serveriin");
+
+});
+
+
+let sslOptions = {
+  key: fs.readFileSync('key.pem'),
+  cert: fs.readFileSync('cert.pem')
+};
+
+//http.createServer(app).listen(8443);
+https.createServer(sslOptions, app).listen(1111,
+					   function()
+{
+    //let hostport = app.address().port;
+	console.log("Express server is listening -- HTTPS, ite allekirjotettu sertifikaatti");
+//	console.log("Port is: %s", hostport);
+}
+					  )
+
+
+/*
+// Start nodeJS server
+let server = app.listen(1111, function()
+{
+	let hostport = server.address().port;
+	console.log("Express server is listening");
+	console.log("Port is: %s", hostport);
+});
+*/
+
+

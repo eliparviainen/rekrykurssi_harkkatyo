@@ -499,15 +499,23 @@ kato kannalla jossa kaikki kenttätyypit
 */
 
 class AddRowArea extends React.Component {
+
     
+
     render() {
+
+	console.log("PUUTTUU: kun kanta vaihtuu AddRowArean ollessa auki, päivittyy huonosti (joku tilannollaus oltava)")
+	
+	console.log("add row template",	this.props.appState.dbTemplate)
+
+	
+		
 		    return(
 <div>	    
 			  
-			    <Row mode="add" dbTemplate={this.props.appState.dbTemplate}
-			jsonrow={RowContents.emptyRow(this.props.appState.dbTemplate)}
-			userId={this.props.appState.userId}
-			appFuns={this.props.appFuns}
+			    <Row mode="add" 
+			appState={this.props.appState}
+		   appFuns={this.props.appFuns}
 			    />
 			   
 			    <Box mt={2}>
@@ -536,8 +544,7 @@ export class RowContents  extends React.Component
     constructor(props) {
 	super(props);
 
-	let enumVals = {};
-	this.state = {indexInMenu: 0, enumVals:[]}
+	this.state = {indexInMenu: 0}
 
 	console.log("RowContents constr",this.state)
     }
@@ -545,18 +552,32 @@ export class RowContents  extends React.Component
     static emptyRow(template) {
 	// this.props.appState.dbTemplate
 	let newRow = {};
-	for (let key in template.fieldTypes)
-	{ 	   
-	    switch (template.fieldTypes[key]) {
-	    case "string": newRow[key]=""; break;
-	    case "text": newRow[key]=""; break;
-	    case "URL": newRow[key]=template.dbEnums[key][0]; break;
-	    case "number":newRow[key]="0"; break;
+	let enumTypes = [];
+	for (let key in template.dbEnums) { enumTypes.push(key); }
+	console.log("tyhjän rivin template",template)
+	console.log("tyhjän rivin template",template.dbFieldTypes)
+	for (let key in template.dbFieldTypes)
+	{
+	    switch (template.dbFieldTypes[key]) {
+	    case "string": newRow[key]="(string)"; break;
+	    case "text": newRow[key]="(text)"; break;
+	    case "url": newRow[key]="(URL)"; break;
+	    case "number":newRow[key]=0; break;
 	    default:
-		// DBINTERNAL-kenttiä ei luoda täällä
-		newRow[key]=""; break;
+		// implicit assumption: everything not listed above is enum
+		let ind = enumTypes.indexOf(template.dbFieldTypes[key]);
+		console.log("tyhjä rivi indexof=",ind);
+		if (ind>=0) {
+		    let typeName = enumTypes[ind];
+		    console.log("tyhjä rivi name=",typeName);
+		    newRow[key]=template.dbEnums[typeName][0]; break;
+		} else {
+		    newRow[key]="(no value)";
+		}
 	    }//switch
 	}//for
+
+	console.log("tyhjä rivi=",newRow);
 	return(newRow);
     }
 
@@ -566,11 +587,26 @@ export class RowContents  extends React.Component
     }
 
 
-    renderSimpleInput = (mode, key, index, typeTag, valueTag, multiline) => {
+    renderSimpleInput = (mode, key, index, typeTag, multiline) => {
 	if (mode === "edit" || mode === "add") {
 	    if (!multiline) { multiline=false; }
-	    if (typeTag==="URL") { typeTag="string" }
-	return(
+	    if (typeTag==="url") { typeTag="string" }
+
+	    console.log("renderSimpleInput",key)
+	    console.log("renderSimpleInput",this.props.appState.rowUnderUpdate[key])
+
+	    // Initially, rowUnderUpdate comes here as an empty object so input
+	    // values are undefined. Changing from unefined to defined later is
+	    // not tolerated. So don't render undefineds.
+	    if (this.props.appState.rowUnderUpdate[key]===undefined) {
+		console.log("ongelmakenttiä ei renderöidä");
+		return(<TableRow key={index}>
+		       <TableCell>
+		       </TableCell></TableRow>)
+	    }
+
+	    
+	    	return(
 				<TableRow key={index}>
 			    
 			    <TableCell>
@@ -578,29 +614,32 @@ export class RowContents  extends React.Component
 		<OutlinedInput type={typeTag}
 	    name={key}
 	    multiline={multiline}
-			value={valueTag}
-			onChange={this.props.change} />
+			value={this.props.appState.rowUnderUpdate[key]}
+			onChange={this.props.appFuns.changeRow} />
 			    </TableCell>
 			    </TableRow>
 	)
-	} else {
+	} // edit/add
+	else {
 
-	    let st = (typeTag==="URL")?{"fontStyle":"italic"}:{};
-	    return( <TableRow key={index}><TableCell style={st} multiline={multiline}>&nbsp;{valueTag}</TableCell></TableRow>)
-	}
+	    let st = (typeTag==="url")?{"fontStyle":"italic"}:{};
+	    return( <TableRow key={index}><TableCell style={st} multiline={multiline}>&nbsp;{this.props.appState.rowUnderUpdate[key]}</TableCell></TableRow>)
+	} // view
     }
 
 
+    /*
     changeEnum = (fieldName, value) => {
 	let newVals = this.state.enumVals;
 	newVals[fieldName]=value;
 	this.setState({enumVals:newVals});
     }
+    */
 			
     renderEnumInput = (mode, key, index, enumName) => {
 
 	// lyhenne
-	let templateEnums = this.props.dbTemplate.dbEnums;
+	let templateEnums = this.props.appState.dbTemplate.dbEnums;
 	
 	console.log('renderEnumInput enter');
 	
@@ -619,76 +658,78 @@ export class RowContents  extends React.Component
 		       {enumval}</MenuItem>);
 	    }) // map
 
-
-	    /*
-ESIM
-      <FormControl className={classes.formControl}>
-        <Select value={age} onChange={handleChange} displayEmpty className={classes.selectEmpty}>
-          <MenuItem value="" disabled>
-            Placeholder
-          </MenuItem>
-          <MenuItem value={10}>Ten</MenuItem>
-          <MenuItem value={20}>Twenty</MenuItem>
-          <MenuItem value={30}>Thirty</MenuItem>
-        </Select>
-        <FormHelperText>Placeholder</FormHelperText>
-		</FormControl>
-		*/
 	    
-	//console.log( optionTags );
+	    //console.log( optionTags );
+	    // onchange={(event)=>this.changeEnum(enumName, event.target.value)}>
+
+	    console.log("renderEnum, value", this.props.appState.rowUnderUpdate[key]);
+
+	    if ((!this.props.appState.rowUnderUpdate[key])||isEmpty(optionTags)) {
+//		console.log("ongelmaselektiä ei renderöidä");
+		return(<TableRow key={index}>
+		       <TableCell>
+		       </TableCell></TableRow>)
+	    }
+
+//	    console.log("ongelmaselect renderöidään");
 	return(
-	    		<TableRow key={index}>
+	    	<TableRow key={index}>
 			    
-			    <TableCell>
+		<TableCell>
 		<DDTinputLabel>{key}</DDTinputLabel>
 
 		<FormControl variant="outlined" style={{minWidth:"10em"}}>
-		<Select value={this.state.enumVals[enumName]} onchange={(event)=>this.changeEnum(enumName, event.target.value)}>	
+		<Select
+	    	    name={key}
+	    value={this.props.appState.rowUnderUpdate[key]}
+	    onChange={this.props.appFuns.changeRow}>
 		{optionTags}
 	    </Select>
 		</FormControl>
 			    </TableCell>
 		</TableRow>
 	)
-    } else {
+	} // add/edit
+	else {
 	
 	return(
 	    		<TableRow key={index}>			    
-		<TableCell>{this.props.jsonrow[key]}			 
+		<TableCell>{this.props.appState.rowUnderUpdate[key]}			 
 			    </TableCell>
 		</TableRow>
-	)
+	) // view
 		    
     }
     }
 
+    /*
     componentDidMount = () => {
 		let enumVals={};
-	if (!isEmpty(this.props.dbTemplate.dbEnums)) {	    
-	this.props.dbTemplate.dbEnums.forEach(
-	    (key) => { enumVals[key]=this.props.dbTemplate.dbEnums[key][0]} );
+	if (!isEmpty(this.props.appState.dbTemplate.dbEnums)) {	    
+	this.props.appState.dbTemplate.dbEnums.forEach(
+	    (key) => { enumVals[key]=this.props.appState.dbTemplate.dbEnums[key][0]} );
 	}
 	this.setState({enumVals:enumVals});
 	console.log("rowcont render",enumVals);
-
     }
+*/
     
-    render = () => {
+    render() {
 
-
+	console.log("RowCont props.jsonrow",this.props.appState.rowUnderUpdate);
 	
 	let fieldnames = [];
 	let enumTypes = [];
 
 	/*
-	console.log("RowCedit jsonrow",this.props.jsonrow)
-	console.log("RowCedit template",this.props.dbTemplate)
+	console.log("RowCedit jsonrow",this.props.appState.rowUnderUpdate)
+	console.log("RowCedit template",this.props.appState.dbTemplate)
 */
 	
-	for (let key in this.props.dbTemplate.dbFieldTypes) { fieldnames.push(key); }
+	for (let key in this.props.appState.dbTemplate.dbFieldTypes) { fieldnames.push(key); }
 
-//	console.log("RowCedit template enums",this.props.dbTemplate.dbEnums)
-	for (let key in this.props.dbTemplate.dbEnums) { enumTypes.push(key); }
+//	console.log("RowCedit template enums",this.props.appState.dbTemplate.dbEnums)
+	for (let key in this.props.appState.dbTemplate.dbEnums) { enumTypes.push(key); }
 	
 //	console.log("enums=",enumTypes)
 	
@@ -701,48 +742,56 @@ ESIM
 	
 	fieldnames.forEach( (key, index) => {
 
-	    /*
+	    
 		console.log("RowCedit key-"+index,key)
-		console.log("RowCedit type-"+index,this.props.dbTemplate.dbFieldTypes[key])
-*/
+		console.log("RowCedit type-"+index,this.props.appState.dbTemplate.dbFieldTypes[key])
+
 		
 		//this.wrapWithTitle(key, () => {
-		switch (this.props.dbTemplate.dbFieldTypes[key]) {
+		switch (this.props.appState.dbTemplate.dbFieldTypes[key]) {
 		case "string":
-		    wideElems.push(this.renderSimpleInput(this.props.mode, key, index, "text", this.props.jsonrow[key]))
+		    wideElems.push(this.renderSimpleInput(this.props.mode, key, index, "text"));
 		    break;
 
-		case "URL":
-		    wideElems.push(this.renderSimpleInput(this.props.mode, key, index, "URL", this.props.jsonrow[key]))
+		case "url":
+		    wideElems.push(this.renderSimpleInput(this.props.mode, key, index, "url"));
 		    break;
 
 		case "text":
 		    let multiline=true;
-		    wideElems.push(this.renderSimpleInput(this.props.mode, key, index, "text", this.props.jsonrow[key], multiline));
+		    wideElems.push(this.renderSimpleInput(this.props.mode, key, index, "text", multiline));
 		    break;
 		    			
 		case "number":
-		    narrowElems.push(this.renderSimpleInput(this.props.mode, key, index, "number", this.props.jsonrow[key]));
+		    console.log("kutsuu renderSimple (nro)")
+
+
+		    narrowElems.push(this.renderSimpleInput(this.props.mode, key, index, "number"));
+		    console.log("narrow=",narrowElems)
 		    break;
 		    
 		default:
 
 
 		    console.log("RowCedit, enumTypes",enumTypes)
-		    console.log("RowCedit, enumTypes, sisältäkö: ",this.props.dbTemplate.dbFieldTypes[key])
+		    console.log("RowCedit, enumTypes, sisältäkö: ",this.props.appState.dbTemplate.dbFieldTypes[key])
 		    
-		    if (enumTypes.includes(this.props.dbTemplate.dbFieldTypes[key])) {
+		    if (enumTypes.includes(this.props.appState.dbTemplate.dbFieldTypes[key])) {
 			
 			console.log("RowCedit, löytyi enumtyyppi");
-			console.log("if ",this.props.dbTemplate.dbFieldTypes[key])
+			console.log("if ",this.props.appState.dbTemplate.dbFieldTypes[key])
 
 
-			let enumName = this.props.dbTemplate.dbFieldTypes[key];
+			let enumName = this.props.appState.dbTemplate.dbFieldTypes[key];
 
 
-			console.log("if ",this.props.dbTemplate.dbEnums[enumName])
+			//console.log("kutsuu renderEnum",this.props.appState.rowUnderUpdate[key])
 			
-			narrowElems.push(this.renderEnumInput(this.props.mode, key, index, enumName, this.props.dbTemplate.dbEnums));
+			
+			narrowElems.push(this.renderEnumInput(this.props.mode, key, index, enumName));
+
+			//console.log("narrow=",narrowElems)
+			
 		    } // enum-tyyppi
 		    else {
 			console.log("row edit/add: unknown field type, skip");
@@ -779,7 +828,7 @@ ESIM
     renderViewControls = () => {
 
 	
-	if (this.props.jsonrow._owner === this.props.userId) {
+	if (this.props.appState.rowUnderUpdate._owner === this.props.appState.userId) {
 	    
 	    return(
 		    <TableCell>
@@ -845,19 +894,12 @@ ESIM
 
 export class Row extends React.Component {
 
+// dbTemplate={this.props.appState.dbTemplate}
+    
     constructor(props) {
 	super(props)
 	this.state = { mode: this.props.mode,
-		       jsonrow: this.props.jsonrow
 		     }
-    }
-
-
-    change = (event) => {
-	let newrow = this.state.jsonrow;
-	newrow[event.target.name]=event.target.value;
-	this.setState({jsonrow: newrow});
-	
     }
 
 
@@ -884,10 +926,14 @@ export class Row extends React.Component {
     toAddMode = () => { this.setState({mode:"add"}) }
 
     
-    renderRemoveConfirm = () => { return(
+    renderRemoveConfirm = () => {
+	return(
 	    <div className="removeConfirm">
 	    <Table><TableBody><TableRow><TableCell>
-	    <RowContents mode="view" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow}/>
+		<RowContents mode="view"
+	    appState={this.props.appState}
+		   appFuns={this.props.appFuns}
+		    />
 	    </TableCell>
 	    <TableCell>
 	    <div><Button text="Confirm remove" onClick={()=>{this.sendUpRemove(); this.props.finishRemove(); }}/></div>
@@ -897,10 +943,16 @@ export class Row extends React.Component {
 
 	</div>
     )
-				}
-
+    }
+    
+    /*
+    componentDidMount = () => {
+	this.setState({jsonrow: this.props.appState.rowUnderUpdate});
+    }
+*/
     
     render() {
+
 
 
 	console.log("Row:",this.state.mode)
@@ -908,30 +960,36 @@ export class Row extends React.Component {
 	switch (this.state.mode) {
 	case "add":
 
+	    console.log("Row-tag, mode=add, props.jsonrow",this.props.appState.rowUnderUpdate)
+	    //console.log("Row-tag, mode=add, state.jsonrow",this.state.jsonrow)
+	    
 	    return(
-		    <Table><TableBody><TableRow><TableCell>
-		   <RowContents mode="add" dbTemplate={this.props.dbTemplate}
-		   jsonrow = {this.state.jsonrow}
-		   change={this.change}
+		    <Table><TableBody><TableRow>
+		    <RowContents mode="add"
+		appState={this.props.appState}
+		appFuns={this.props.appFuns}
 		    />
 
-		   </TableCell><TableCell>
-		    <RowControls mode="add" dbTemplate={this.props.dbTemplate}
-		   finishEdit={this.toAddMode} sendUpEdits={this.sendUpCreate}
+		    <RowControls mode="add"
+		appState={this.props.appState}
+		   appFuns={this.props.appFuns}
 		   />
-		   </TableCell></TableRow></TableBody></Table>
+</TableRow></TableBody></Table>
 			  )
 	    
 
 	case "edit":
 
 	    return(<Table><TableBody><TableRow><TableCell>
-		   <RowContents mode="edit" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow} change={this.change}/>
+		   <RowContents mode="edit"
+		   appState={this.props.appState}
+		   appFuns={this.props.appFuns}
+		   />
 		   <p className="KESKEN"> BUGI: nrokenttään ei voi kirj numeroa; nrokentän muutettu arvo ei näy ainakaan oikein</p>
 		   </TableCell><TableCell>
-		    <RowControls mode="edit" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow}
-		   finishEdit={this.toViewMode}
-		   sendUpEdits={this.sendUpEdits}
+		   <RowControls mode="edit"
+		   appState={this.props.appState}
+		   appFuns={this.props.appFuns}
 		   />
 		   </TableCell></TableRow></TableBody></Table>
 	    )
@@ -943,7 +1001,10 @@ export class Row extends React.Component {
 	    return(
 			    <div className="removeConfirm">
 		    <Table><TableBody><TableRow><TableCell>
-		    <RowContents mode="view" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow}/>
+		    <RowContents mode="view"
+			    appState={this.props.appState}
+	    appFuns={this.props.appFuns}
+/>
 	    </TableCell>
 	    <TableCell>
 		    <div><Button text="Confirm remove" onClick={()=>{this.sendUpRemove(); this.toViewMode(); }}/></div>
@@ -963,14 +1024,16 @@ export class Row extends React.Component {
 		<div className="KESKEN">
 		<Table><TableBody><TableRow>
 		<TableCell>
-		<RowContents mode="view" dbTemplate={this.props.dbTemplate} jsonrow={this.state.jsonrow}/>
+		<RowContents mode="view"
+	    appState={this.props.appState}
+	    appFuns={this.props.appFuns}
+		/>
 		</TableCell>
 		<TableCell>
 		<RowControls mode="view"
-	    jsonrow={this.state.jsonrow}
-	    userId={this.props.userId}
-	    toEdit={this.toEditMode}
-	    toRemove={this.toRemoveMode} />
+	    	    appState={this.props.appState}
+	    appFuns={this.props.appFuns}
+		/>
 	       </TableCell>
 		</TableRow></TableBody></Table>
 		</div>
@@ -1295,6 +1358,7 @@ class App extends React.Component {
 	    dbRows: [],
 	    msgFromBackend: "",
 	    settings: {},
+	    rowUnderUpdate: {},
 	}
 
     } // constr
@@ -1324,6 +1388,7 @@ class App extends React.Component {
 	    dbTemplate: {},
 	    msgFromBackend: "",
 	    settings: {groupBy: "none", showShared: true },
+	    rowUnderUpdate: {},
 	})};
     
     appToBrowseState = () => { this.setState({pageState: "browse"}) }
@@ -1351,7 +1416,17 @@ class App extends React.Component {
     consumeMsgFromBackend = (msg) => {
 	this.setState({msgFromBackend:""});
     }
+
+
     
+    changeRow = (event) => {
+	console.log(" changeRow",event);
+	let newrow = this.state.rowUnderUpdate;
+	newrow[event.target.name]=event.target.value;
+	this.setState({rowUnderUpdate: newrow});
+	
+    }
+
 
   //======================================================================
     fetchAndProcess = (path, req, logname, gotDataFun) => {
@@ -1597,6 +1672,7 @@ class App extends React.Component {
 					 dbName: data.dbName,
 					 dbDescription: data.dbDescription,
 					 dbTemplate: data.dbTemplate,
+					 rowUnderUpdate: RowContents.emptyRow(data.dbTemplate)
 				     });
 
 				     
@@ -1629,7 +1705,7 @@ class App extends React.Component {
 				 case OK:
 
 				     this.setState({
-					 dbRows: data
+					 dbRows: data,					 
 				     });
 
 				     
@@ -1656,6 +1732,7 @@ class App extends React.Component {
     render() {
 
 	console.log("userRole", this.state.userRole)
+	console.log("muista AddArea:mn disabled toisinpäin");
 	
 	const functionList = {initiateSignUp:this.initiateSignUp,
 			      initiateSignIn:this.initiateSignIn,
@@ -1667,6 +1744,7 @@ class App extends React.Component {
 			      createSchema:this.createSchema,
 			      cancelCreateSchema:this.cancelCreateSchema,
 			      readSchema:this.readSchema,
+			      changeRow:this.changeRow,
 			     };
 
 	switch (this.state.pageState) {
@@ -1740,9 +1818,13 @@ class App extends React.Component {
 		</ExpansionPanelDetails>
 
 	    	    </ExpansionPanel >
-		<ExpansionPanel disabled={(!this.state.dbId)
-					  || (this.state.userRole!=="editor")}
-	    onChange={this.consumeMsgFromBackend}>
+		<ExpansionPanel disabled={!((!this.state.dbId) || (this.state.userRole!=="editor"))}
+	    onChange={()=>{
+		this.consumeMsgFromBackend();
+		let emptyRow = RowContents.emptyRow(this.state.dbTemplate);
+		this.setState({rowUnderUpdate:emptyRow});
+	    }}
+		>
 
 	    <ExpansionPanelSummary
 	    expandIcon={<ExpandMoreIcon />}

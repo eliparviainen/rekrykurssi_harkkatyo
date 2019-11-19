@@ -148,7 +148,7 @@ for (let fieldname in templateForAddingDB.fieldTypes) {
 	case "string":
 	    schemaDefJson[fieldname] = { type: String };
 	    break;
-	case "URL":
+	case "url":
 	    console.log("KESKEN: joko frontendissä on URL-render?");
 	    // tarttee: npm install mongoose-type-url
 	    schemaDefJson[fieldname] = { type: mongoose.SchemaTypes.Url };
@@ -156,6 +156,8 @@ for (let fieldname in templateForAddingDB.fieldTypes) {
 	case "number":
 	    schemaDefJson[fieldname] = { type: Number };
 	    break;
+	default:
+	    console.log("tuntematon kentäntyyppi",templateForAddingDB.fieldTypes[fieldname]);
 	}
     }
 //    schemaDefJson[fieldname] = 
