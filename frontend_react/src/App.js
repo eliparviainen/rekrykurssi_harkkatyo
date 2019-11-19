@@ -96,14 +96,16 @@ class ChooseDBarea extends React.Component {
     return(
 	    <div>
 	    <Grid container spacing={3}>
-	    <Grid>
+	    <Grid item xs={4} >
 	    <FormControl variant="outlined" style={{minWidth:"10em"}}>
 	    <Select value={this.props.appState.dbList[this.state.indexInMenu].dbName} onChange={this.readSchema}>	    
 	    {optionTags}
 	</Select>
 
 	</FormControl>
-	    	    </Grid>	    <Grid>
+	    </Grid>
+   	    <Grid item xs={2}></Grid>
+	    <Grid item xs={6}>
 	    <Box m={2}> {
 		this.props.appState.dbList[this.state.indexInMenu].dbDescription
 	    }</Box>
@@ -267,7 +269,7 @@ class CreateDBarea extends React.Component {
 	    newState.dbFieldTypes[this.state.newFieldName] = this.state.newFieldType;
 	}
 	newState.newFieldName="";
-	newState.newFieldType="";
+	newState.newFieldType="string";
 	this.setState(newState);
 //	console.log(this.state)
     }
@@ -533,7 +535,11 @@ export class RowContents  extends React.Component
 
     constructor(props) {
 	super(props);
-	this.state = {indexInMenu: 0}
+
+	let enumVals = {};
+	this.state = {indexInMenu: 0, enumVals:[]}
+
+	console.log("RowContents constr",this.state)
     }
 
     static emptyRow(template) {
@@ -544,18 +550,18 @@ export class RowContents  extends React.Component
 	    switch (template.fieldTypes[key]) {
 	    case "string": newRow[key]=""; break;
 	    case "text": newRow[key]=""; break;
-	    case "URL": newRow[key]=template.enums[key][0]; break;
+	    case "URL": newRow[key]=template.dbEnums[key][0]; break;
 	    case "number":newRow[key]="0"; break;
 	    default:
 		// DBINTERNAL-kenttiä ei luoda täällä
-		//newRow[key]="";
+		newRow[key]=""; break;
 	    }//switch
 	}//for
 	return(newRow);
     }
 
 
-        setIndex = (event) => {
+    setIndex = (event) => {
 	this.setState({indexInMenu:event.target.dataset.index});	
     }
 
@@ -585,10 +591,27 @@ export class RowContents  extends React.Component
     }
 
 
+    changeEnum = (fieldName, value) => {
+	let newVals = this.state.enumVals;
+	newVals[fieldName]=value;
+	this.setState({enumVals:newVals});
+    }
 			
-    renderEnumInput = (mode, key, index, enumName, templateEnums) => {
+    renderEnumInput = (mode, key, index, enumName) => {
 
+	// lyhenne
+	let templateEnums = this.props.dbTemplate.dbEnums;
+	
+	console.log('renderEnumInput enter');
+	
 	if (mode === "edit" || mode === "add") {
+
+	    /*
+	    console.log('renderEnumInput name', enumName);
+	    console.log('renderEnumInput all-enums', templateEnums);
+	    console.log('renderEnumInput enum[name]', templateEnums[enumName]);
+*/
+	    
 	let optionTags = templateEnums[enumName].map(
 	    (enumval, index) => {
 		return(<MenuItem key={index} value={enumval} name={enumval}
@@ -597,7 +620,20 @@ export class RowContents  extends React.Component
 	    }) // map
 
 
-
+	    /*
+ESIM
+      <FormControl className={classes.formControl}>
+        <Select value={age} onChange={handleChange} displayEmpty className={classes.selectEmpty}>
+          <MenuItem value="" disabled>
+            Placeholder
+          </MenuItem>
+          <MenuItem value={10}>Ten</MenuItem>
+          <MenuItem value={20}>Twenty</MenuItem>
+          <MenuItem value={30}>Thirty</MenuItem>
+        </Select>
+        <FormHelperText>Placeholder</FormHelperText>
+		</FormControl>
+		*/
 	    
 	//console.log( optionTags );
 	return(
@@ -607,7 +643,7 @@ export class RowContents  extends React.Component
 		<DDTinputLabel>{key}</DDTinputLabel>
 
 		<FormControl variant="outlined" style={{minWidth:"10em"}}>
-	    <Select value={templateEnums[this.state.indexInMenu].name} onchange={this.props.change}>	
+		<Select value={this.state.enumVals[enumName]} onchange={(event)=>this.changeEnum(enumName, event.target.value)}>	
 		{optionTags}
 	    </Select>
 		</FormControl>
@@ -626,24 +662,38 @@ export class RowContents  extends React.Component
     }
     }
 
+    componentDidMount = () => {
+		let enumVals={};
+	if (!isEmpty(this.props.dbTemplate.dbEnums)) {	    
+	this.props.dbTemplate.dbEnums.forEach(
+	    (key) => { enumVals[key]=this.props.dbTemplate.dbEnums[key][0]} );
+	}
+	this.setState({enumVals:enumVals});
+	console.log("rowcont render",enumVals);
+
+    }
     
     render = () => {
+
 
 	
 	let fieldnames = [];
 	let enumTypes = [];
 
+	/*
 	console.log("RowCedit jsonrow",this.props.jsonrow)
 	console.log("RowCedit template",this.props.dbTemplate)
-
+*/
 	
 	for (let key in this.props.dbTemplate.dbFieldTypes) { fieldnames.push(key); }
-	for (let typeName in this.props.dbTemplate.enums) { enumTypes.push(typeName); }
+
+//	console.log("RowCedit template enums",this.props.dbTemplate.dbEnums)
+	for (let key in this.props.dbTemplate.dbEnums) { enumTypes.push(key); }
 	
-	console.log("enums=",enumTypes)
+//	console.log("enums=",enumTypes)
 	
 	
-	console.log("RowCedit kentät",fieldnames)
+//	console.log("RowCedit kentät",fieldnames)
 
 	let wideElems = [];
 	let narrowElems = [];
@@ -651,8 +701,10 @@ export class RowContents  extends React.Component
 	
 	fieldnames.forEach( (key, index) => {
 
+	    /*
 		console.log("RowCedit key-"+index,key)
 		console.log("RowCedit type-"+index,this.props.dbTemplate.dbFieldTypes[key])
+*/
 		
 		//this.wrapWithTitle(key, () => {
 		switch (this.props.dbTemplate.dbFieldTypes[key]) {
@@ -674,16 +726,23 @@ export class RowContents  extends React.Component
 		    break;
 		    
 		default:
+
+
+		    console.log("RowCedit, enumTypes",enumTypes)
+		    console.log("RowCedit, enumTypes, sisältäkö: ",this.props.dbTemplate.dbFieldTypes[key])
 		    
 		    if (enumTypes.includes(this.props.dbTemplate.dbFieldTypes[key])) {
 			
-			console.log("TESTAAMATONTA KOODIA");
-			console.log(this.props.dbTemplate.dbFieldTypes[key])
+			console.log("RowCedit, löytyi enumtyyppi");
 			console.log("if ",this.props.dbTemplate.dbFieldTypes[key])
-			console.log("if ",this.props.dbTemplate.enums[enumName])
+
 
 			let enumName = this.props.dbTemplate.dbFieldTypes[key];
-			narrowElems.push(this.renderEnumInput(this.props.mode, key, index, enumName,  this.props.dbTemplate.enums));
+
+
+			console.log("if ",this.props.dbTemplate.dbEnums[enumName])
+			
+			narrowElems.push(this.renderEnumInput(this.props.mode, key, index, enumName, this.props.dbTemplate.dbEnums));
 		    } // enum-tyyppi
 		    else {
 			console.log("row edit/add: unknown field type, skip");
@@ -951,7 +1010,7 @@ class ContentsArea extends React.Component {
 	let rows = [];
 	if (this.props.appState.settings.groupBy === "none") {
 
-	    console.log("no group")
+//	    console.log("no group")
 	    
 	    rows = this.props.appState.dbRows.map(
 	    (dbrow,index) => {
@@ -1014,7 +1073,7 @@ class ContentsArea extends React.Component {
 	    } // for
 	}
 
-	console.log('contents',rows)
+//	console.log('contents',rows)
 	
 	return(
 		<div>
