@@ -66,41 +66,6 @@ module.exports.findUserByName = function(userName, readyFun) {
 
 
 
-function mongooseInsertRow(dbSchema, rowContents, userId) {
-   
-    let modelName = "schemaFor"+dbSchema.id;
-    let schemaDefJson = mongooseJsonFromTemplate(dbSchema.dbTemplate);
-    let newDB = mongoose.model(modelName, schemaDefJson);
-
-    //console.log('kanta '+dbSchema.dbName+' luotu (jos ei sitä ollut jo)');
-
-	// 
-//    LISÄÄ TÄSSÄ ROSKAA KANTAAN    (tapahtuuko kanta sillon mongossa?)
-
-
-    rowContents = epdbAddDefaultFields(rowContents, userId)
-	
-    // pitäisi vastata new Luokka -komentoa?
-	//newRow = Object.create(newDB); // , rowContents
-    newRow = new newDB(rowContents);
-
-    //let teese = false;
-        let teese = true;
-    if (teese) {
-    //	TARKISTA RIVIN MUOTO, LAITTAA NYT SUORAAN ROSKAKANNASTA, ERI KENTÄT
-    newRow.save(function(err, res) {
-	if (err) throw err;
-	//console.log('rivi '+newRow+' lisätty');
-	console.log('rivi lisätty kantaan '+modelName);
-    });
-
-    }
-
-    // muuten valittaa että on jo
-    mongoose.deleteModel(modelName);
-    //	console.log("rivi "+i+" ",newRow)
-}
-
 
 // from stackoverflow
 function noDuplicates(arr) {
@@ -113,7 +78,7 @@ function noDuplicates(arr) {
 
 function epdbSetSystemFields(record, userId) {
     record["_timestamp"] = Date.now();
-    record["_owner"] = userId;
+    record["_owner"] = mongoose.Types.ObjectId(userId);
     console.log("KESKEN: _isPublic ei riitä julkisuusmekanismiksi (private,shared,moderator-locked")
     record["_isPublic"] = true;
 
@@ -187,7 +152,7 @@ module.exports.getAllRows = function(userId, dbId, sendFun) {
 
 	console.log("malli "+modelName+" ",currentDB)
 
-	    console.log("uid=",userId)
+	console.log("uid=",userId)
 
 	let haku = 	    
 	    {$or : [ { _owner: userId}, 
@@ -198,6 +163,8 @@ module.exports.getAllRows = function(userId, dbId, sendFun) {
 	    ]
 	    }
 
+	console.log("TMP: rivien omistajuus/julkisuustarkastus poissa päältä");
+	haku = {}
 	
 	currentDB.find(haku
 	,(err, dbRows) => {
@@ -255,8 +222,36 @@ module.exports.getHeader = function(userId, dbId, sendFun) {
 
 }
 
+module.exports.createRow = function(ownerId, dbId, rowSpecs, sendFun) {
 
 
+    ifVerbose("createRow enter");
+    
+   	
+    epdbDatabaseSchema.find({_id:dbId}, (err, dbs) => {
+
+	if (isEmpty(dbs)) { return sendFun(err, []) }	
+	let dbSchema = dbs[0];
+
+   
+    let modelName = "schemaFor"+dbSchema.id;
+    let schemaDefJson = mongooseJsonFromTemplate(dbSchema.dbTemplate);
+    let newDB = mongoose.model(modelName, schemaDefJson);
+	
+    rowContents = epdbSetSystemFields(rowSpecs, ownerId)
+    newRow = new newDB(rowContents);
+
+    newRow.save(function(err, res) {
+	if (err) throw err;
+	//console.log('rivi '+newRow+' lisätty');
+	console.log('rivi lisätty kantaan '+modelName);
+    });
+
+    // muuten valittaa että on jo
+    mongoose.deleteModel(modelName);
+    })
+}
+    
 
 module.exports.createDB = function(ownerId, dbSpecs, sendFun) {
 

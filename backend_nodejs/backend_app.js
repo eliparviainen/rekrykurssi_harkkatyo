@@ -362,11 +362,9 @@ ifVerbose("entering content_delete")
 function content_create(req, res) {
 ifVerbose("entering content_create")
 
-    
-    let newRow = DBiface.newRow(req.params.userId, req.params.dbId, req.body);
-
-    DBiface.addRow(newRow, (err) => {
-	if (err) { return res.status(409).json({msg: "row not saved"}); } 
+   
+    DBiface.createRow(req.params.userId, req.params.dbId, req.body, (err) => {
+	if (err) { return res.status(409).json({msg: "row not added"}); } 
     	return res.status(200).json(newRow);
     })
 }

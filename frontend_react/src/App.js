@@ -504,11 +504,14 @@ class AddRowArea extends React.Component {
 
     render() {
 
-	console.log("PUUTTUU: kun kanta vaihtuu AddRowArean ollessa auki, päivittyy huonosti (joku tilannollaus oltava)")
-	
-	console.log("add row template",	this.props.appState.dbTemplate)
+/*
+kohta ei ole auki jos ei ole valittu
+	if (isEmpty(this.props.appState.dbList)) {
+	    return(<div> No database selected. </div>)
+	}
+*/
+//	console.log("add row template",	this.props.appState.dbTemplate)
 
-	
 		
 		    return(
 <div>	    
@@ -526,10 +529,7 @@ class AddRowArea extends React.Component {
 	    </div>
 	)
 
-
-    }
-
-    
+    }    
 }
 
 
@@ -541,13 +541,11 @@ export class RowContents  extends React.Component
 // ============================================================
 {
 
+    /*
     constructor(props) {
 	super(props);
-
-	this.state = {indexInMenu: 0}
-
-	console.log("RowContents constr",this.state)
     }
+    */
 
     static emptyRow(template) {
 	// this.props.appState.dbTemplate
@@ -582,13 +580,15 @@ export class RowContents  extends React.Component
     }
 
 
+    /*
     setIndex = (event) => {
 	this.setState({indexInMenu:event.target.dataset.index});	
     }
+*/
 
 
-    renderSimpleInput = (mode, key, index, typeTag, multiline) => {
-	if (mode === "edit" || mode === "add") {
+    renderSimpleInput = (key, index, typeTag, multiline) => {
+	if (this.props.mode === "edit" || this.props.mode === "add") {
 	    if (!multiline) { multiline=false; }
 	    if (typeTag==="url") { typeTag="string" }
 
@@ -615,15 +615,24 @@ export class RowContents  extends React.Component
 	    name={key}
 	    multiline={multiline}
 			value={this.props.appState.rowUnderUpdate[key]}
-			onChange={this.props.appFuns.changeRow} />
+			onChange={this.props.appFuns.changeRowUnderUpdate} />
 			    </TableCell>
 			    </TableRow>
 	)
 	} // edit/add
 	else {
 
+	    KESKEN
+	    rivin tallentaja ei laita datakenttiä lainkaan, vain systeemikentät
+	    
+
+	    console.log("simple-render-for-view, index",this.props.viewRowIndex);
+	    console.log("simple-render-for-view, rivi",this.props.appState.dbRows[this.props.viewRowIndex]);
+	    console.log("simple-render-for-view, kenttä",this.props.appState.dbRows[this.props.viewRowIndex][key]);
+	    
+
 	    let st = (typeTag==="url")?{"fontStyle":"italic"}:{};
-	    return( <TableRow key={index}><TableCell style={st} multiline={multiline}>&nbsp;{this.props.appState.rowUnderUpdate[key]}</TableCell></TableRow>)
+	    return( <TableRow key={index}><TableCell style={st} multiline={multiline}>&nbsp;{this.props.appState.dbRows[this.props.viewRowIndex][key]}</TableCell></TableRow>)
 	} // view
     }
 
@@ -636,14 +645,14 @@ export class RowContents  extends React.Component
     }
     */
 			
-    renderEnumInput = (mode, key, index, enumName) => {
+    renderEnumInput = (key, index, enumName) => {
 
 	// lyhenne
 	let templateEnums = this.props.appState.dbTemplate.dbEnums;
 	
 	console.log('renderEnumInput enter');
 	
-	if (mode === "edit" || mode === "add") {
+	if (this.props.mode === "edit" || this.props.mode === "add") {
 
 	    /*
 	    console.log('renderEnumInput name', enumName);
@@ -654,10 +663,12 @@ export class RowContents  extends React.Component
 	let optionTags = templateEnums[enumName].map(
 	    (enumval, index) => {
 		return(<MenuItem key={index} value={enumval} name={enumval}
-		       data-index={index} onMouseEnter={this.setIndex}>
+		       data-index={index} >
 		       {enumval}</MenuItem>);
 	    }) // map
 
+	    // onMouseEnter={this.setIndex}
+	    
 	    
 	    //console.log( optionTags );
 	    // onchange={(event)=>this.changeEnum(enumName, event.target.value)}>
@@ -682,7 +693,7 @@ export class RowContents  extends React.Component
 		<Select
 	    	    name={key}
 	    value={this.props.appState.rowUnderUpdate[key]}
-	    onChange={this.props.appFuns.changeRow}>
+	    onChange={this.props.appFuns.changeRowUnderUpdate}>
 		{optionTags}
 	    </Select>
 		</FormControl>
@@ -716,7 +727,8 @@ export class RowContents  extends React.Component
     
     render() {
 
-	console.log("RowCont props.jsonrow",this.props.appState.rowUnderUpdate);
+
+//	console.log("RowCont props.jsonrow",this.props.appState.rowUnderUpdate);
 	
 	let fieldnames = [];
 	let enumTypes = [];
@@ -743,43 +755,46 @@ export class RowContents  extends React.Component
 	fieldnames.forEach( (key, index) => {
 
 	    
-		console.log("RowCedit key-"+index,key)
-		console.log("RowCedit type-"+index,this.props.appState.dbTemplate.dbFieldTypes[key])
+		console.log("RowCont key-"+index,key)
+		console.log("RowCont type-"+index,this.props.appState.dbTemplate.dbFieldTypes[key])
 
 		
 		//this.wrapWithTitle(key, () => {
 		switch (this.props.appState.dbTemplate.dbFieldTypes[key]) {
 		case "string":
-		    wideElems.push(this.renderSimpleInput(this.props.mode, key, index, "text"));
+		    wideElems.push(this.renderSimpleInput(key, index, "text"));
 		    break;
 
 		case "url":
-		    wideElems.push(this.renderSimpleInput(this.props.mode, key, index, "url"));
+		    wideElems.push(this.renderSimpleInput(key, index, "url"));
 		    break;
 
 		case "text":
 		    let multiline=true;
-		    wideElems.push(this.renderSimpleInput(this.props.mode, key, index, "text", multiline));
+		    wideElems.push(this.renderSimpleInput(key, index, "text", multiline));
 		    break;
 		    			
 		case "number":
 		    console.log("kutsuu renderSimple (nro)")
 
 
-		    narrowElems.push(this.renderSimpleInput(this.props.mode, key, index, "number"));
+		    narrowElems.push(this.renderSimpleInput(key, index, "number"));
 		    console.log("narrow=",narrowElems)
 		    break;
 		    
 		default:
 
-
+/*
 		    console.log("RowCedit, enumTypes",enumTypes)
 		    console.log("RowCedit, enumTypes, sisältäkö: ",this.props.appState.dbTemplate.dbFieldTypes[key])
+*/
 		    
 		    if (enumTypes.includes(this.props.appState.dbTemplate.dbFieldTypes[key])) {
-			
+
+			/*
 			console.log("RowCedit, löytyi enumtyyppi");
 			console.log("if ",this.props.appState.dbTemplate.dbFieldTypes[key])
+*/
 
 
 			let enumName = this.props.appState.dbTemplate.dbFieldTypes[key];
@@ -828,12 +843,12 @@ export class RowContents  extends React.Component
     renderViewControls = () => {
 
 	
-	if (this.props.appState.rowUnderUpdate._owner === this.props.appState.userId) {
+	if (this.props.appState.dbRows[this.props.viewRowIndex]._owner === this.props.appState.userId) {
 	    
 	    return(
 		    <TableCell>
-		    <Button onClick={this.props.toEdit} variant="outlined" color="primary" size="small">Edit</Button>  
-		    <Button onClick={this.props.toRemove} variant="outlined" color="primary" size="small">Remove</Button>
+		    <Button onClick={()=>this.props.initiateRowEdit(this.props.viewRowIndex)} variant="outlined" color="primary" size="small">Edit</Button>  
+		    <Button onClick={()=>this.props.appFuns.initiateRowRemove(this.props.viewRowIndex)} variant="outlined" color="primary" size="small">Remove</Button>
 		    </TableCell>
 	    )
 	
@@ -843,7 +858,7 @@ export class RowContents  extends React.Component
 	    )
 	}
 
-
+	  
     }
 
 
@@ -852,8 +867,8 @@ export class RowContents  extends React.Component
 
 	return(
 	    <TableCell>
-		    <Button onClick={()=>{this.props.sendUpEdits(); this.props.finishEdit(); }} variant="outlined" color="primary" size="small">Save</Button>  
-		    <Button onClick={this.props.finishEdit} variant="outlined" color="primary" size="small">Discard edits</Button>
+		    <Button onClick={this.props.appFuns.updateRow} variant="outlined" color="primary" size="small">Save</Button>  
+		    <Button onClick={this.props.appFuns.cancelUpdateRow} variant="outlined" color="primary" size="small">Discard edits</Button>
 		    </TableCell>
 	
 )
@@ -865,10 +880,8 @@ export class RowContents  extends React.Component
 
 	    return(
 		    <TableCell>
-		   <p className="KESKEN"> PUUTTUU: select:ien arvoja ei kirjata minnekään, kantaan menee aina eka arvo </p>
-
-		    <Button onClick={()=>{this.props.sendUpEdits(); this.props.finishEdit(); }} variant="outlined" color="primary" size="small">Add</Button>  
-		    <Button onClick={this.props.finishEdit} variant="outlined" color="primary" size="small">Cancel</Button>
+		    <Button onClick={this.props.appFuns.createRow} variant="outlined" color="primary" size="small">Add</Button>  
+		    <Button onClick={this.props.appFuns.cancelCreateRow} variant="outlined" color="primary" size="small">Cancel</Button>
 		    </TableCell>
 
 
@@ -890,35 +903,15 @@ export class RowContents  extends React.Component
 
 
 
-//class RowRemove extends React.Component {}
 
 export class Row extends React.Component {
 
-// dbTemplate={this.props.appState.dbTemplate}
     
     constructor(props) {
 	super(props)
 	this.state = { mode: this.props.mode,
 		     }
     }
-
-
-    // {(info) => {this.props.sendUpDBchange("update", info)}}
-        sendUpEdits = () => {
-	    this.props.sendUpDBchange("update",this.state.jsonrow);
-    }
-    
-    sendUpRemove = () => {
-	this.props.sendUpDBchange('delete',this.state.jsonrow._id);
-	console.log('sendUpEdits Row: lähetä remove ylöspäin',this.state.jsonrow);
-    }
-
-    sendUpCreate = () => {
-	this.props.sendUpDBchange('create',this.state.jsonrow);
-    }
-
-
-
     
     toEditMode = () => { this.setState({mode:"edit"}) }
     toRemoveMode = () => { this.setState({mode:"remove"}) }
@@ -926,33 +919,13 @@ export class Row extends React.Component {
     toAddMode = () => { this.setState({mode:"add"}) }
 
     
-    renderRemoveConfirm = () => {
-	return(
-	    <div className="removeConfirm">
-	    <Table><TableBody><TableRow><TableCell>
-		<RowContents mode="view"
-	    appState={this.props.appState}
-		   appFuns={this.props.appFuns}
-		    />
-	    </TableCell>
-	    <TableCell>
-	    <div><Button text="Confirm remove" onClick={()=>{this.sendUpRemove(); this.props.finishRemove(); }}/></div>
-	    <div><Button text="Cancel remove" onClick={this.props.finishRemove}/></div>
-	    </TableCell>	       
-	    </TableRow></TableBody></Table>
-
-	</div>
-    )
-    }
-    
-    /*
-    componentDidMount = () => {
-	this.setState({jsonrow: this.props.appState.rowUnderUpdate});
-    }
-*/
-    
     render() {
 
+	/*
+	if (isEmpty(this.props.appState.dbTemplate)) {
+	    return(<p>No database.</p>);
+	}
+*/
 
 
 	console.log("Row:",this.state.mode)
@@ -999,18 +972,17 @@ export class Row extends React.Component {
 	case "remove":
 
 	    return(
-			    <div className="removeConfirm">
+		    <div className="removeConfirm">
 		    <Table><TableBody><TableRow><TableCell>
 		    <RowContents mode="view"
-			    appState={this.props.appState}
-	    appFuns={this.props.appFuns}
-/>
-	    </TableCell>
-	    <TableCell>
-		    <div><Button text="Confirm remove" onClick={()=>{this.sendUpRemove(); this.toViewMode(); }}/></div>
-	    <div><Button text="Cancel remove" onClick={this.toViewMode}/></div>
-	    </TableCell>	       
-	    </TableRow></TableBody></Table>
+		appState={this.props.appState}
+		appFuns={this.props.appFuns}
+		    />
+		    </TableCell>
+		    <TableCell>
+		    <div><Button text="Confirm remove" onClick={this.props.appFuns.deleteRow}/></div>
+		    <div><Button text="Cancel remove" onClick={this.props.appFuns.cancelDeleteRow}/></div>	    </TableCell>	       
+		    </TableRow></TableBody></Table>
 
 	</div>
 	   	    
@@ -1019,24 +991,27 @@ export class Row extends React.Component {
 	    
 
 	default:
+	    console.log("rivi, view");
 
 	return(
-		<div className="KESKEN">
+		
 		<Table><TableBody><TableRow>
 		<TableCell>
 		<RowContents mode="view"
 	    appState={this.props.appState}
 	    appFuns={this.props.appFuns}
+	    viewRowIndex = {this.props.viewRowIndex}
 		/>
 		</TableCell>
 		<TableCell>
 		<RowControls mode="view"
 	    	    appState={this.props.appState}
 	    appFuns={this.props.appFuns}
+	    viewRowIndex = {this.props.viewRowIndex}
 		/>
 	       </TableCell>
 		</TableRow></TableBody></Table>
-		</div>
+		
 	)
 
 	    
@@ -1066,7 +1041,9 @@ class ContentsArea extends React.Component {
     
     
     render() {
+	console.log("ContentArea, enter, rivejä=",this.props.appState.dbRows.length)
 
+	
 	/* aina aikajärjestys */
 	this.props.appState.dbRows.sort(this.timestampSortDesc);
 
@@ -1078,21 +1055,23 @@ class ContentsArea extends React.Component {
 	    rows = this.props.appState.dbRows.map(
 	    (dbrow,index) => {
 
-		//console.log("ContentArea:",dbrow)
+		console.log("ContentArea, no grouping:",index)
 
 		
 		if (this.props.appState.settings.showShared || dbrow._owner === this.props.appState.userId) {
+
+
 		return(		    
 			<Row key={dbrow._id} mode="view"
-		    dbTemplate={this.props.appState.dbTemplate}
-		    jsonrow={dbrow}
-		    userId={this.props.appState.userId}
-		    sendUpDBchange={this.props.sendUpDBchange}
+		    appState = {this.props.appState}
+		    appFuns = {this.props.appFuns}
+		    viewRowIndex = {index}
 			/>
 		)} else { return([]) }
 	    }) // map
 	} // if no grouping
 	else {
+
 	    console.log("group")
 	    rows = [];
 	    for (let groupingVariableValue in this.props.appState.settings.valueVisibility) {
@@ -1102,15 +1081,16 @@ class ContentsArea extends React.Component {
 		    let rows2 = this.props.appState.dbRows.map(
 			(dbrow,index) => {
 
+	    		console.log("ContentArea, grouping:",index)
+			    
 			    if (dbrow[this.props.appState.settings.groupBy]===groupingVariableValue) {
 
 				if (this.props.appState.settings.showShared || dbrow._owner === this.props.appState.userId) {
 				return(
-				    <Row key={dbrow._id} mode="view"
-				dbTemplate={this.props.appState.dbTemplate}
-				jsonrow={dbrow}
-				    userId={this.props.appState.userId}
-				sendUpDBchange={this.props.sendUpDBchange}
+					<Row key={dbrow._id} mode="view"
+				    viewRowIndex = {index}
+				    appState = {this.props.appState}
+				    appFuns = {this.props.appFuns}
 					/>
 				) } else {return([])}
 			    }
@@ -1419,8 +1399,8 @@ class App extends React.Component {
 
 
     
-    changeRow = (event) => {
-	console.log(" changeRow",event);
+    changeRowUnderUpdate = (event) => {
+	console.log(" changeRowUnderUpdate",event);
 	let newrow = this.state.rowUnderUpdate;
 	newrow[event.target.name]=event.target.value;
 	this.setState({rowUnderUpdate: newrow});
@@ -1538,9 +1518,11 @@ class App extends React.Component {
 				 // In principle, a user could continue using a public database after signout,
 				 // but keeping track of this is complicated. Always start from an initial state.
 				 this.zeroState();
-			     }) // fetch	
-	this.userIntoVisitor();	
-	this.appToBrowseState();
+				 this.readAllSchemas();
+				 this.userIntoVisitor();	
+				 this.appToBrowseState();
+				 
+			     }) // fetch
     }
 
 
@@ -1711,7 +1693,7 @@ class App extends React.Component {
 				     
 				     this.setMsgFromBackend("Database contents retrieved.");
 				     
-				     console.log("readAllRows onnistui");
+				     console.log("readAllRows onnistui, riveja=", this.state.dbRows.length);
 				     break;
 				 case FORBIDDEN:
 				     this.setMsgFromBackend("No access to database.");
@@ -1724,6 +1706,116 @@ class App extends React.Component {
 
     }
 
+
+    // ==================================================
+
+    createRow = () => {
+
+	let req = this.makePostReq(this.state.RowUnderUpdate);
+
+	console.log("createRow, req", req);
+
+	this.fetchAndProcess(
+	    Routes.createRow(this.state.userId, this.state.dbId), req, "App.js/createRow",
+	    (data, status)=>{
+		switch (status) {				 
+		case OK:
+
+		    this.setMsgFromBackend("Database row added.");
+		    this.getDBcontent();
+				     
+		    console.log("createRow onnistui");
+		    break;
+		case FORBIDDEN:
+		    this.setMsgFromBackend("No access to database.");
+		    break;
+		default:
+		    this.setMsgFromBackend("Could note update database. We don't know why.");
+		    break;
+		} // switch
+	    }) // fetch	
+	
+	this.setState({rowUnderUpdate: RowContents.emptyRow(this.state.dbTemplate)});
+    }
+
+    cancelCreateRow = () => {
+	this.setState({rowUnderUpdate: RowContents.emptyRow(this.state.dbTemplate)});
+    }
+
+    updateRow = () => {
+
+
+	let req = this.makePutReq(this.state.RowUnderUpdate);
+
+	console.log("updateRow, req", req);
+
+	let rowId = this.state.RowUnderUpdate._id;
+	this.fetchAndProcess(
+	    Routes.updateRow(this.state.userId, this.state.dbId, rowId), req, "App.js/updateRow",
+	    (data, status)=>{
+		switch (status) {				 
+		case OK:
+
+		    this.setMsgFromBackend("Database row updated.");
+		    this.getDBcontent();
+				     
+		    console.log("updateRow onnistui");
+		    break;
+		case FORBIDDEN:
+		    this.setMsgFromBackend("No access to this row.");
+		    break;
+		default:
+		    this.setMsgFromBackend("Could note update database. We don't know why.");
+		    break;
+		} // switch
+	    }) // fetch	
+	
+	this.setState({rowUnderUpdate: RowContents.emptyRow(this.state.dbTemplate)});
+    }
+
+    cancelUpdateRow = () => {
+	this.setState({rowUnderUpdate: RowContents.emptyRow(this.state.dbTemplate)});
+    }
+
+
+    deleteRow = () => {
+	
+	let req = this.makeDeleteReq(this.state.RowUnderUpdate);
+
+	console.log("deleteRow, req", req);
+
+	let rowId = this.state.RowUnderUpdate._id;
+	this.fetchAndProcess(
+	    Routes.deleteRow(this.state.userId, this.state.dbId, rowId), req, "App.js/deleteRow",
+	    (data, status)=>{
+		switch (status) {				 
+		case OK:
+
+		    this.setMsgFromBackend("Database row updated.");
+		    this.getDBcontent();
+				     
+		    console.log("deleteRow onnistui");
+		    break;
+		case FORBIDDEN:
+		    this.setMsgFromBackend("No access to this row.");
+		    break;
+		default:
+		    this.setMsgFromBackend("Could note update database. We don't know why.");
+		    break;
+		} // switch
+	    }) // fetch	
+	
+	this.setState({rowUnderUpdate: RowContents.emptyRow(this.state.dbTemplate)});
+    }
+
+    cancelDeleteRow = () => {
+	this.setState({rowUnderUpdate: RowContents.emptyRow(this.state.dbTemplate)});
+
+    }
+
+    // ==================================================
+    
+    
     showDBname = () => {
 	if (isEmpty(this.state.dbName)) { return([]) }
 	else { return(<span>: <span style={{"fontWeight":"bold"}}> {this.state.dbName} </span></span>) }
@@ -1731,6 +1823,8 @@ class App extends React.Component {
     
     render() {
 
+	console.log("BUGI: manage databases (eli editor-rooli) putoaa pois käytöstä kun avaa choosedb:n")
+	
 	console.log("userRole", this.state.userRole)
 	console.log("muista AddArea:mn disabled toisinpäin");
 	
@@ -1744,9 +1838,12 @@ class App extends React.Component {
 			      createSchema:this.createSchema,
 			      cancelCreateSchema:this.cancelCreateSchema,
 			      readSchema:this.readSchema,
-			      changeRow:this.changeRow,
+			      changeRowUnderUpdate:this.changeRowUnderUpdate,
+			      createRow:this.createRow,
+			      updateRow:this.updateRow,
+			      deleteRow:this.deleteRow,
 			     };
-
+	
 	switch (this.state.pageState) {
 	case "signup":
 		    	return(
@@ -1818,7 +1915,7 @@ class App extends React.Component {
 		</ExpansionPanelDetails>
 
 	    	    </ExpansionPanel >
-		<ExpansionPanel disabled={!((!this.state.dbId) || (this.state.userRole!=="editor"))}
+		<ExpansionPanel disabled={((!this.state.dbId) || (this.state.userRole!=="editor"))}
 	    onChange={()=>{
 		this.consumeMsgFromBackend();
 		let emptyRow = RowContents.emptyRow(this.state.dbTemplate);
@@ -1865,102 +1962,5 @@ class App extends React.Component {
 	} // switch
     }
 }
-/*
-
-    // ######################################################################
-    // SIIVOTTAVAA
-    // ######################################################################
-    
-
-
-  
-    //======================================================================
-    changeDBState = (cmd, info) => {
-	switch (cmd) {
-	case 'create':
-	    {  // suluissa jotta let req:lle block scope
-		let req = makePostReq(info)
-		{
-		    method: "POST",
-		    mode: "cors",
-		    headers: {"Content-type":"application/json"},
-		    body: JSON.stringify(info)
-		}
-		this.fetchAndProcess('/epdb/content/'+this.state.userId+"/"+this.state.dbId, req, "App.js/changeDBState/create", ()=>{});
-
-		this.getDBcontent();		
-	    }
-	    break;
-	case 'delete':
-	    {
-		console.log("App.js/del",info)
-		let req = {
-		    method: "DELETE",
-		    mode: "cors",
-		    headers: {"Content-type":"application/json"},
-		}
-		this.fetchAndProcess('/epdb/content/'+this.state.userId+"/"+this.state.dbId+"/"+info, req, "App.js/changeDBState/delete", ()=>{});
-		
-		this.getDBcontent();
-		
-
-	    }
-	    break;
-	case 'update':
-
-	    console.log("appjs",info)
-	    
-	    {  // suluissa jotta let req:lle block scope
-		let req = makePutReq(info)
-		
-		this.fetchAndProcess('/epdb/content/'+this.state.userId+"/"+this.state.dbId+"/"+info._id, req, "App.js/changeDBState/update", ()=>{});
-
-    		this.getDBcontent();		
-	    }
-	    
-	    
-	    break;
-	default:
-	    console.log("VIRHE. Tuntematon kannanpäivityskäsky.");
-	}
-    }
-
-    //======================================================================
-    setUserIdentity = (userName, userId) => {
-//	let newState = this.state;
-//	newState.userName = userName;
-//	newState.userName = userName;
-	this.setState({userName: userName, userId: userId});
-	console.log("user "+this.state.userName+" = "+this.state.userId);
-	console.log("PUUTTUU: sessionstorageen tallennus ettei reload tuhoa tilaa");
-    }
-
-    //======================================================================
-    readSchema = (dbId) => {
-
-	// oletustietokanta on valittava täällä koska:
-	// tätä kutsutaaan myös login-tilassa jossa on
-	// pakko tehä joku valinta (myöhemmin tänne päätyy
-	// vain jos jotain oikeasti muuttuu)
-
-	if (dbId === "") {
-	    dbId = this.state.dbNames[0].id;
-	}
-	
-	
-	//console.log("App ", dbId)
-	
-	let newState = this.state;
-	newState.dbId = dbId;
-	this.setState(newState, () => {
-	    // tapahtuu vasta kun tila muuttunut
-	    this.getDBinfo();
-            this.getDBcontent();
-	});
-	//console.log("dbid ",this.state.dbId);
-	
-    }
-
-*/
 
 export default App;
