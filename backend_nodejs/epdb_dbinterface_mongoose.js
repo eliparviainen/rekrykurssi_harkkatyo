@@ -80,8 +80,7 @@ function epdbSetSystemFields(record, userId) {
     let newRecord = record;
     newRecord["_timestamp"] = Date.now();
     newRecord["_owner"] = mongoose.Types.ObjectId(userId);
-    newRecord["_isPublic"] = true;
-
+    
     return(newRecord)
 }
 
@@ -173,10 +172,11 @@ module.exports.getAllRows = function(userId, dbId, sendFun) {
 	currentDB.find(haku
 	,(err, dbRows) => {
 
+	    mongoose.deleteModel(modelName);
+	    
 	    if (isEmpty(dbRows)) { return sendFun(err, []) }
 	    //console.log("currentDB:n rivit ",dbRows)
 
-	    mongoose.deleteModel(modelName)
 	    return sendFun(err, dbRows);
 	}) // currentDB.find
 
@@ -268,26 +268,34 @@ const handleRow = function(task, ownerId, dbId, rowSpecs, sendFun) {
 	    */
 
 	    newRow.save(function(err, res) {
+		// muuten valittaa että on jo
+		mongoose.deleteModel(modelName);
 		if (err) throw err;
-		console.log('createRow: added row ',res);
-		console.log('createRow: added to db ',modelName);
-		
 		return( sendFun(err, res) );
 	    }) // save
 	    break;
 
 	case "delete":
-	    dbModel.deleteOne({_id: rowSpecs._id}, sendFun);
+	    dbModel.deleteOne({_id: rowSpecs._id}, function(err, res) {
+		// muuten valittaa että on jo
+		mongoose.deleteModel(modelName);
+		if (err) throw err;
+		return( sendFun(err, res) );
+	    });
 	    break;
 	case 'update':	
 	default:
 	    // tällä voisi korvata createnkin mutta antaa olla, se osa koodia toimii jo
-	    dbModel.findOneAndUpdate({_id:rowSpecs._id}, rowSpecs, {upsert:true}, sendfun);
+	    dbModel.findOneAndUpdate({_id:rowSpecs._id}, rowSpecs, {upsert:true}, function(err, res) {
+		// muuten valittaa että on jo
+		mongoose.deleteModel(modelName);
+		if (err) throw err;
+		return( sendFun(err, res) );
+	    });
 	    break;
 	} // switch
 	
-	// muuten valittaa että on jo
-	mongoose.deleteModel(modelName);
+
     
     }) // find db
 

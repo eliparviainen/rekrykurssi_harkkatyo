@@ -1,9 +1,9 @@
 import React from 'react';
-import {Table, TableBody, TableCell, TableHead, TableRow} from '@material-ui/core';
-import Paper from '@material-ui/core/Paper';
+//import {Table, TableBody, TableCell, TableHead, TableRow} from '@material-ui/core';
+//import Paper from '@material-ui/core/Paper';
 import Box from '@material-ui/core/Box'
-import OutlinedInput from '@material-ui/core/OutlinedInput'
-import Button from '@material-ui/core/Button'
+//import OutlinedInput from '@material-ui/core/OutlinedInput'
+//import Button from '@material-ui/core/Button'
 import {Select, MenuItem, FormControl} from '@material-ui/core';
 import Typography from '@material-ui/core/Typography'
 import Grid from '@material-ui/core/Grid';
@@ -11,7 +11,7 @@ import Grid from '@material-ui/core/Grid';
 import {isEmpty} from './helperfuns';
 
 
-class ChooseDBarea extends React.Component {
+export default class ChooseDBarea extends React.Component {
 
     constructor(props) {
 	super(props)
@@ -32,7 +32,7 @@ class ChooseDBarea extends React.Component {
     
     render() {
 
-	console.log("PIKKUBUGEJA: 1: selectin leveys ei muutu vaikka pitkä dbnimi, 2: valikko peittää selitystekstejä");
+
 	
 	if (isEmpty(this.props.appState.dbList)) {
 	    return(<div> No databases available </div>)
@@ -48,9 +48,9 @@ class ChooseDBarea extends React.Component {
 
     return(
 	    <>
-	    <Grid container>
+	    <Grid container spacing={10}>
 	    <Grid item xs={4} >
-	    <FormControl variant="outlined" style={{minWidth:"10em"}}>
+	    <FormControl variant="outlined" style={{minWidth:"12em"}}>
 	    <Select value={this.props.appState.dbList[this.state.indexInMenu].dbName} onChange={this.readSchema}>	    
 	    {optionTags}
 	</Select>

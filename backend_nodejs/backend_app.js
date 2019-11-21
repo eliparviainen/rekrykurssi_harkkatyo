@@ -403,7 +403,7 @@ function content_edit(req, res) {
 ifVerbose("entering content_edit")
 
 // tänne tullessa olettaa että editointioikeus riviin on tarkastettu jo
-	DBiface.editRow(oldRow, req.body, (err, updatedRow) => {
+    DBiface.updateRow(req.params.userId, req.params.dbId, req.body, (err, updatedRow) => {
 	    if (err) { return res.status(409).json({msg: "row not saved"}); } 
     	    return res.status(200).json(updatedRow);
 	}) // editRow
