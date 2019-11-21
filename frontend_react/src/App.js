@@ -63,18 +63,6 @@ class ChooseDBarea extends React.Component {
     setIndex = (event) => {
 	this.setState({indexInMenu:event.target.dataset.index});	
     }
-    /*
-    showDetails = (event) => {
-	console.log("focus!", event.target.dataset.index)	
-	let indexInMenu = event.target.dataset.index;
-	    console.log("showdet",indexInMenu);
-	    console.log("showdet",this.props.appState.dbList[indexInMenu])
-	this.setState({
-	    dBdetails : this.props.appState.dbList[indexInMenu].dbDescription,
-	    selectText : this.props.appState.dbList[indexInMenu].dbName
-	})
-    }
-    */
 
     
     render() {
@@ -91,8 +79,6 @@ class ChooseDBarea extends React.Component {
 	}) // map
 	}
 
-	console.log("text=",this.state.indexInMenu)
-	console.log("lista=",this.props.appState.dbList)
     return(
 	    <div>
 	    <Grid container spacing={3}>
@@ -175,7 +161,7 @@ class CreateDBarea extends React.Component {
 		     }
 		   }
 
-	console.log("FE create DB ",info)	
+	//console.log("FE create DB ",info)	
 	this.props.appFuns.createSchema(info);
 	this.zeroState();
 	this.props.appFuns.consumeMsgFromBackend();
@@ -368,7 +354,7 @@ class CreateDBarea extends React.Component {
     render() {
 
 
-	console.log("BEmsg=",this.props.appState.msgFromBackend)
+	//console.log("BEmsg=",this.props.appState.msgFromBackend)
 
 	
 	    return(
@@ -552,8 +538,6 @@ export class RowContents  extends React.Component
 	let newRow = {};
 	let enumTypes = [];
 	for (let key in template.dbEnums) { enumTypes.push(key); }
-	console.log("tyhjän rivin template",template)
-	console.log("tyhjän rivin template",template.dbFieldTypes)
 	for (let key in template.dbFieldTypes)
 	{
 	    switch (template.dbFieldTypes[key]) {
@@ -564,10 +548,8 @@ export class RowContents  extends React.Component
 	    default:
 		// implicit assumption: everything not listed above is enum
 		let ind = enumTypes.indexOf(template.dbFieldTypes[key]);
-		console.log("tyhjä rivi indexof=",ind);
 		if (ind>=0) {
 		    let typeName = enumTypes[ind];
-		    console.log("tyhjä rivi name=",typeName);
 		    newRow[key]=template.dbEnums[typeName][0]; break;
 		} else {
 		    newRow[key]="(no value)";
@@ -575,7 +557,6 @@ export class RowContents  extends React.Component
 	    }//switch
 	}//for
 
-	console.log("tyhjä rivi=",newRow);
 	return(newRow);
     }
 
@@ -592,14 +573,15 @@ export class RowContents  extends React.Component
 	    if (!multiline) { multiline=false; }
 	    if (typeTag==="url") { typeTag="string" }
 
-	    console.log("renderSimpleInput",key)
-	    console.log("renderSimpleInput",this.props.appState.rowUnderUpdate[key])
+	    
+	    //console.log("renderSimpleInput",key)
+	    //console.log("renderSimpleInput",this.props.appState.rowUnderUpdate[key])
 
 	    // Initially, rowUnderUpdate comes here as an empty object so input
 	    // values are undefined. Changing from unefined to defined later is
 	    // not tolerated. So don't render undefineds.
 	    if (this.props.appState.rowUnderUpdate[key]===undefined) {
-		console.log("ongelmakenttiä ei renderöidä");
+		//console.log("ongelmakenttiä ei renderöidä");
 		return(<TableRow key={index}>
 		       <TableCell>
 		       </TableCell></TableRow>)
@@ -622,13 +604,14 @@ export class RowContents  extends React.Component
 	} // edit/add
 	else {
 
-	    KESKEN
-	    rivin tallentaja ei laita datakenttiä lainkaan, vain systeemikentät
+	    //KESKEN
+	    //rivin tallentaja ei laita datakenttiä lainkaan, vain systeemikentät
 	    
-
+/*
 	    console.log("simple-render-for-view, index",this.props.viewRowIndex);
 	    console.log("simple-render-for-view, rivi",this.props.appState.dbRows[this.props.viewRowIndex]);
 	    console.log("simple-render-for-view, kenttä",this.props.appState.dbRows[this.props.viewRowIndex][key]);
+*/
 	    
 
 	    let st = (typeTag==="url")?{"fontStyle":"italic"}:{};
@@ -650,7 +633,7 @@ export class RowContents  extends React.Component
 	// lyhenne
 	let templateEnums = this.props.appState.dbTemplate.dbEnums;
 	
-	console.log('renderEnumInput enter');
+	//console.log('renderEnumInput enter');
 	
 	if (this.props.mode === "edit" || this.props.mode === "add") {
 
@@ -673,7 +656,7 @@ export class RowContents  extends React.Component
 	    //console.log( optionTags );
 	    // onchange={(event)=>this.changeEnum(enumName, event.target.value)}>
 
-	    console.log("renderEnum, value", this.props.appState.rowUnderUpdate[key]);
+	    //console.log("renderEnum, value", this.props.appState.rowUnderUpdate[key]);
 
 	    if ((!this.props.appState.rowUnderUpdate[key])||isEmpty(optionTags)) {
 //		console.log("ongelmaselektiä ei renderöidä");
@@ -713,18 +696,6 @@ export class RowContents  extends React.Component
     }
     }
 
-    /*
-    componentDidMount = () => {
-		let enumVals={};
-	if (!isEmpty(this.props.appState.dbTemplate.dbEnums)) {	    
-	this.props.appState.dbTemplate.dbEnums.forEach(
-	    (key) => { enumVals[key]=this.props.appState.dbTemplate.dbEnums[key][0]} );
-	}
-	this.setState({enumVals:enumVals});
-	console.log("rowcont render",enumVals);
-    }
-*/
-    
     render() {
 
 
@@ -754,9 +725,10 @@ export class RowContents  extends React.Component
 	
 	fieldnames.forEach( (key, index) => {
 
-	    
+	    /*
 		console.log("RowCont key-"+index,key)
 		console.log("RowCont type-"+index,this.props.appState.dbTemplate.dbFieldTypes[key])
+*/
 
 		
 		//this.wrapWithTitle(key, () => {
@@ -775,11 +747,11 @@ export class RowContents  extends React.Component
 		    break;
 		    			
 		case "number":
-		    console.log("kutsuu renderSimple (nro)")
+		    //console.log("kutsuu renderSimple (nro)")
 
 
 		    narrowElems.push(this.renderSimpleInput(key, index, "number"));
-		    console.log("narrow=",narrowElems)
+		    //console.log("narrow=",narrowElems)
 		    break;
 		    
 		default:
@@ -819,7 +791,7 @@ export class RowContents  extends React.Component
 
 
 	
-	return( <Table size="small">
+	return( <div><Table size="small">
 		<TableBody>
 		<TableRow><TableCell>
 		{wideElems}
@@ -828,7 +800,8 @@ export class RowContents  extends React.Component
 		{narrowElems}
 		</TableCell></TableRow>
 		</TableBody>
-	       </Table>
+		</Table>
+		</div>
 	      )
     
 
@@ -933,11 +906,11 @@ export class Row extends React.Component {
 	switch (this.state.mode) {
 	case "add":
 
-	    console.log("Row-tag, mode=add, props.jsonrow",this.props.appState.rowUnderUpdate)
+	    //console.log("Row-tag, mode=add, props.jsonrow",this.props.appState.rowUnderUpdate)
 	    //console.log("Row-tag, mode=add, state.jsonrow",this.state.jsonrow)
 	    
 	    return(
-		    <Table><TableBody><TableRow>
+		    <Table><TableBody>
 		    <RowContents mode="add"
 		appState={this.props.appState}
 		appFuns={this.props.appFuns}
@@ -947,7 +920,7 @@ export class Row extends React.Component {
 		appState={this.props.appState}
 		   appFuns={this.props.appFuns}
 		   />
-</TableRow></TableBody></Table>
+</TableBody></Table>
 			  )
 	    
 
@@ -991,7 +964,7 @@ export class Row extends React.Component {
 	    
 
 	default:
-	    console.log("rivi, view");
+	    //console.log("rivi, view");
 
 	return(
 		
@@ -1042,6 +1015,7 @@ class ContentsArea extends React.Component {
     
     render() {
 	console.log("ContentArea, enter, rivejä=",this.props.appState.dbRows.length)
+		console.log("ContentArea, enter, rivit=",this.props.appState.dbRows)
 
 	
 	/* aina aikajärjestys */
@@ -1055,8 +1029,8 @@ class ContentsArea extends React.Component {
 	    rows = this.props.appState.dbRows.map(
 	    (dbrow,index) => {
 
-		console.log("ContentArea, no grouping:",index)
-
+		//console.log("ContentArea, no grouping:",index)
+		
 		
 		if (this.props.appState.settings.showShared || dbrow._owner === this.props.appState.userId) {
 
@@ -1072,7 +1046,7 @@ class ContentsArea extends React.Component {
 	} // if no grouping
 	else {
 
-	    console.log("group")
+
 	    rows = [];
 	    for (let groupingVariableValue in this.props.appState.settings.valueVisibility) {
 		if (this.props.appState.settings.valueVisibility[groupingVariableValue]) {
@@ -1081,7 +1055,7 @@ class ContentsArea extends React.Component {
 		    let rows2 = this.props.appState.dbRows.map(
 			(dbrow,index) => {
 
-	    		console.log("ContentArea, grouping:",index)
+	    		    //console.log("ContentArea, grouping:",index)
 			    
 			    if (dbrow[this.props.appState.settings.groupBy]===groupingVariableValue) {
 
@@ -1400,7 +1374,7 @@ class App extends React.Component {
 
     
     changeRowUnderUpdate = (event) => {
-	console.log(" changeRowUnderUpdate",event);
+	//console.log(" changeRowUnderUpdate",event);
 	let newrow = this.state.rowUnderUpdate;
 	newrow[event.target.name]=event.target.value;
 	this.setState({rowUnderUpdate: newrow});
@@ -1484,7 +1458,7 @@ class App extends React.Component {
     }
 
     makePostReq = (info) => {
-	console.log("makePostReq ",info)
+	//console.log("makePostReq ",info)
 	let req = this.makeReq();
 	req["method"]="POST";
 	req["body"]=JSON.stringify(info);
@@ -1511,7 +1485,7 @@ class App extends React.Component {
 
 	let req = this.makePostReq({"userId": this.state.userId}); 
 
-	console.log("sigout, req", req);
+	//console.log("sigout, req", req);
 	this.fetchAndProcess(Routes.signout(this.state.userId), req, "App.js/signOut",
 			     (data, status)=>{
 				 console.log("signed out with status", status);
@@ -1529,7 +1503,7 @@ class App extends React.Component {
     finalizeSignUp = (userName, password) => {	
         let req = this.makePostReq({"userName": userName, "password":password});
 
-	console.log("finalizeSignUp, req", req);
+	//console.log("finalizeSignUp, req", req);
 	this.fetchAndProcess(Routes.signup(), req, "App.js/finalizeSignIn",
 			     (data, status)=>{
 				 switch (status) {				 
@@ -1554,14 +1528,13 @@ class App extends React.Component {
 	
         let req = this.makePostReq({"userName": userName, "password":password});
 
-	console.log("finalizeSignIn, req", req);
+	//console.log("finalizeSignIn, req", req);
 	this.fetchAndProcess(Routes.signin(), req, "App.js/finalizeSignIn",
 			     (data, status)=>{
 				 switch (status) {				 
 				 case OK:
 				     this.setState({userId:data.userId, sessionToken:data.sessionToken})
 				     this.userIntoEditor();
-				     console.log("KESKEN: toteuta editor/owner-valinta tietokantaa valitessa")
 				     this.appToBrowseState();
 				     this.readAllSchemas();
 				 console.log("signed in "+userName+", id="+this.state.userId+" token="+this.state.sessionToken)
@@ -1583,19 +1556,16 @@ class App extends React.Component {
         //======================================================================
 
     createSchema = (dbinfo) => {
-	console.log("KESKEN: tietokannan luonti puuttuu");
 
 	let req = this.makePostReq(dbinfo);
 
-	console.log("createSchema, req", req);
-	console.log("createSchema, osote",'/epdb/owner/list/'+this.state.userId)
 	this.fetchAndProcess(Routes.createSchema(this.state.userId), req, "App.js/createSchema",
 			     (data, status)=>{
 				 switch (status) {				 
 				 case OK:
 				     this.setMsgFromBackend("Database '"+data.dbName+"' succesfully created.");
 				     
-				     console.log("createSchema onnistui");
+				     //console.log("createSchema onnistui");
 				     // 
 				     console.log("KESKEN: kun dbvalinta valmis, just luotu tietokanta pitää samalla valita");
 				     this.readAllSchemas();
@@ -1622,11 +1592,9 @@ class App extends React.Component {
 
 	let req = this.makeGetReq();
 
-	console.log("getlist, req", req);
-	console.log("getlist, user=",this.state.userId)
 	this.fetchAndProcess(Routes.readAllSchemas(this.state.userId), req, "App.js/getList",
 			     (data, status)=>{
-				 console.log("got dblist", data.dbList);
+				 //console.log("got dblist", data.dbList);
 				 this.setState({dbList:data.dbList});
 			     }) // fetch	
 
@@ -1638,11 +1606,9 @@ class App extends React.Component {
     
     readSchema = (dbId) => {
 	
-	console.log("KESKEN: tietokannan valint puuttuu");
 
 	let req = this.makeGetReq();
 
-	console.log("readSchema, req", req);
 
 	this.fetchAndProcess(Routes.readSchema(this.state.userId,dbId), req, "App.js/readSchema",
 			     (data, status)=>{
@@ -1660,7 +1626,7 @@ class App extends React.Component {
 				     
 				     this.setMsgFromBackend("Database '"+data.dbName+"' in use.");
 				     
-				     console.log("readSchema onnistui");
+				     //console.log("readSchema onnistui");
 				     this.readAllRows(data.dbId);
 				     break;
 				 case FORBIDDEN:
@@ -1679,8 +1645,7 @@ class App extends React.Component {
 	
 	let req = this.makeGetReq();
 
-	console.log("readSchema, req", req);
-
+	
 	this.fetchAndProcess(Routes.readAllRows(this.state.userId,dbId), req, "App.js/readAllRows",
 			     (data, status)=>{
 				 switch (status) {				 
@@ -1711,9 +1676,9 @@ class App extends React.Component {
 
     createRow = () => {
 
-	let req = this.makePostReq(this.state.RowUnderUpdate);
+	let req = this.makePostReq(this.state.rowUnderUpdate);
 
-	console.log("createRow, req", req);
+	console.log("createRow: ", this.state.rowUnderUpdate)
 
 	this.fetchAndProcess(
 	    Routes.createRow(this.state.userId, this.state.dbId), req, "App.js/createRow",
@@ -1724,7 +1689,7 @@ class App extends React.Component {
 		    this.setMsgFromBackend("Database row added.");
 		    this.getDBcontent();
 				     
-		    console.log("createRow onnistui");
+		    //console.log("createRow onnistui");
 		    break;
 		case FORBIDDEN:
 		    this.setMsgFromBackend("No access to database.");
@@ -1745,11 +1710,10 @@ class App extends React.Component {
     updateRow = () => {
 
 
-	let req = this.makePutReq(this.state.RowUnderUpdate);
+	let req = this.makePutReq(this.state.rowUnderUpdate);
 
-	console.log("updateRow, req", req);
 
-	let rowId = this.state.RowUnderUpdate._id;
+	let rowId = this.state.rowUnderUpdate._id;
 	this.fetchAndProcess(
 	    Routes.updateRow(this.state.userId, this.state.dbId, rowId), req, "App.js/updateRow",
 	    (data, status)=>{
@@ -1759,7 +1723,7 @@ class App extends React.Component {
 		    this.setMsgFromBackend("Database row updated.");
 		    this.getDBcontent();
 				     
-		    console.log("updateRow onnistui");
+		    //console.log("updateRow onnistui");
 		    break;
 		case FORBIDDEN:
 		    this.setMsgFromBackend("No access to this row.");
@@ -1780,11 +1744,10 @@ class App extends React.Component {
 
     deleteRow = () => {
 	
-	let req = this.makeDeleteReq(this.state.RowUnderUpdate);
+	let req = this.makeDeleteReq(this.state.rowUnderUpdate);
 
-	console.log("deleteRow, req", req);
 
-	let rowId = this.state.RowUnderUpdate._id;
+	let rowId = this.state.rowUnderUpdate._id;
 	this.fetchAndProcess(
 	    Routes.deleteRow(this.state.userId, this.state.dbId, rowId), req, "App.js/deleteRow",
 	    (data, status)=>{
@@ -1794,7 +1757,7 @@ class App extends React.Component {
 		    this.setMsgFromBackend("Database row updated.");
 		    this.getDBcontent();
 				     
-		    console.log("deleteRow onnistui");
+		    //console.log("deleteRow onnistui");
 		    break;
 		case FORBIDDEN:
 		    this.setMsgFromBackend("No access to this row.");
@@ -1825,8 +1788,8 @@ class App extends React.Component {
 
 	console.log("BUGI: manage databases (eli editor-rooli) putoaa pois käytöstä kun avaa choosedb:n")
 	
-	console.log("userRole", this.state.userRole)
-	console.log("muista AddArea:mn disabled toisinpäin");
+//	console.log("userRole", this.state.userRole)
+//	console.log("muista AddArea:mn disabled toisinpäin");
 	
 	const functionList = {initiateSignUp:this.initiateSignUp,
 			      initiateSignIn:this.initiateSignIn,

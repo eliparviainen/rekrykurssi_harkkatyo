@@ -362,8 +362,8 @@ ifVerbose("entering content_delete")
 function content_create(req, res) {
 ifVerbose("entering content_create")
 
-   
-    DBiface.createRow(req.params.userId, req.params.dbId, req.body, (err) => {
+    console.log('content_create req',req.body)
+    DBiface.createRow(req.params.userId, req.params.dbId, req.body, (err, newRow) => {
 	if (err) { return res.status(409).json({msg: "row not added"}); } 
     	return res.status(200).json(newRow);
     })

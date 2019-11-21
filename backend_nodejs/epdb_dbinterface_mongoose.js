@@ -77,12 +77,13 @@ function noDuplicates(arr) {
 //x(names); 
 
 function epdbSetSystemFields(record, userId) {
-    record["_timestamp"] = Date.now();
-    record["_owner"] = mongoose.Types.ObjectId(userId);
+    let newRecord = record;
+    newRecord["_timestamp"] = Date.now();
+    newRecord["_owner"] = mongoose.Types.ObjectId(userId);
     console.log("KESKEN: _isPublic ei riitä julkisuusmekanismiksi (private,shared,moderator-locked")
-    record["_isPublic"] = true;
+    newRecord["_isPublic"] = true;
 
-    return(record)
+    return(newRecord)
 }
 
 function epdbCreateSystemFields(schemaDefJson) {
@@ -235,11 +236,18 @@ module.exports.createRow = function(ownerId, dbId, rowSpecs, sendFun) {
 
    
     let modelName = "schemaFor"+dbSchema.id;
-    let schemaDefJson = mongooseJsonFromTemplate(dbSchema.dbTemplate);
-    let newDB = mongoose.model(modelName, schemaDefJson);
+	let schemaDefJson = mongooseJsonFromTemplate(dbSchema.dbTemplate);
+	let newDB = mongoose.model(modelName, schemaDefJson);
+
+	KESKEN
+	tietokantaan ei mene templaten mukaset kentät lainkaan
 	
-    rowContents = epdbSetSystemFields(rowSpecs, ownerId)
-    newRow = new newDB(rowContents);
+	rowContents = epdbSetSystemFields(rowSpecs, ownerId)
+	newRow = new newDB(rowContents);
+
+	console.log("createRow template",dbSchema.dbTemplate)
+	console.log("createRow contents",rowSpecs)
+	console.log("createRow contents",rowContents)
 
     newRow.save(function(err, res) {
 	if (err) throw err;
