@@ -73,14 +73,14 @@ userRouter.post('/signout/:userId', checkSigninStatus, signout_post);
 
 
 let schemaRouter = express.Router();
-app.use("/epdb/structure", checkSessionLife, checkSigninStatus, schemaRouter);
+app.use("/epdb/structure", checkSessionLife, checkSigninStatus, checkContents, schemaRouter);
 schemaRouter.post('/:userId', schemas_create);
 schemaRouter.get('/:userId', schemas_readAll);
 schemaRouter.get('/:userId/:dbId', checkDBaccess, schemas_readOne);
 
 
 let contentRouter = express.Router();
-app.use("/epdb/content", checkSessionLife, checkSigninStatus, checkDBaccess, contentRouter);
+app.use("/epdb/content", checkSessionLife, checkSigninStatus, checkDBaccess, checkContents, contentRouter);
 contentRouter.post('/:userId', schemas_create);
 contentRouter.get('/:userId/:dbId', content_readAll);
 // contentRouter.get('/:userId/:dbId/:rowId', checkRowAccess, content_readOne);
@@ -97,6 +97,7 @@ contentRouter.delete('/:userId/:dbId/:rowId', checkRowAccess, content_delete);
 
 
 function checkSessionLife(req, res, next) {
+    // muista automaattitimeoutit, nyt jää kaatumisten takia paljon kuolleita sessioita kantaan
     console.log("TOTEUTTAMATTA: checkSessionLife");
     return next();    
 }
@@ -111,8 +112,31 @@ function checkDBaccess(req, res, next) {
     return next();    
 }
 
+function checkContents(req, res, next) {
+    /*
+ei hyvä, numero nimeltä "EMPTY" ei toimi
+    if (req.body) {
+	for (key in req.body) {
+	    if (isEmpty(req.body[key])) {
+		req.body[key] = "EMPTY";
+	    }
+	}
+    }
+*/
+    console.log("TOTEUTTAMATTA: checkContents");
+    return next();    
+}
+
 
 function checkRowAccess(req, res, next) {
+
+    /*
+        DBiface.getOneRow(req.params.userId, req.params.dbId, req.params.rowId, (err, oldRow) => {
+	if (err) { return res.status(409).json({msg: "row not saved"}); }
+	if (!oldRow) { return res.status(404).json({msg: "row not found"}); } 
+	}) // getOneRow
+    */
+
     console.log("TOTEUTTAMATTA: checkRowAccess");
     return next();    
 }
@@ -182,7 +206,7 @@ ifVerbose("entering schemas_readOne")
     DBiface.getHeader(req.params.userId, req.params.dbId,
 		      (err, data) => {
 			  if (err) { return passOnError(res, err) }
-			  console.log(data)
+			  console.log("schemas_readOne, got header ",data)
 			  return res.status(200).json({ "dbId": data._id, "dbName": data.dbName,
 							"dbDescription": data.dbDescription,
 							"dbTemplate": data.dbTemplate});
@@ -364,7 +388,12 @@ ifVerbose("entering content_create")
 
     console.log('content_create req',req.body)
     DBiface.createRow(req.params.userId, req.params.dbId, req.body, (err, newRow) => {
-	if (err) { return res.status(409).json({msg: "row not added"}); } 
+	console.log("content_create, err", err)
+	console.log("content_create, newrow", newRow)
+	if (err) {
+	    console.log("err-haara");
+	    return res.status(409).json({msg: "row not added"});
+	} 
     	return res.status(200).json(newRow);
     })
 }
@@ -373,16 +402,11 @@ ifVerbose("entering content_create")
 function content_edit(req, res) {
 ifVerbose("entering content_edit")
 
-
-    DBiface.getOneRow(req.params.userId, req.params.dbId, req.params.rowId, (err, oldRow) => {
-	if (err) { return res.status(409).json({msg: "row not saved"}); }
-	if (!oldRow) { return res.status(404).json({msg: "row not found"}); } 
-	
+// tänne tullessa olettaa että editointioikeus riviin on tarkastettu jo
 	DBiface.editRow(oldRow, req.body, (err, updatedRow) => {
 	    if (err) { return res.status(409).json({msg: "row not saved"}); } 
     	    return res.status(200).json(updatedRow);
 	}) // editRow
-    }) // getOneRow
 }
 
 

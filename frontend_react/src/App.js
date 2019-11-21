@@ -9,21 +9,29 @@ import Typography from '@material-ui/core/Typography'
 //import ListItem from '@material-ui/core/ListItem'
 //import ListItemText from '@material-ui/core/ListItemText'
 import Button from '@material-ui/core/Button'
-import InputLabel from '@material-ui/core/InputLabel'
+//import InputLabel from '@material-ui/core/InputLabel'
 //import Input from '@material-ui/core/Input'
 import OutlinedInput from '@material-ui/core/OutlinedInput'
 import Box from '@material-ui/core/Box'
-import {withStyles} from '@material-ui/core'
+//import {withStyles} from '@material-ui/core'
 //import {makeStyles} from '@material-ui/core'
 
 import {ExpansionPanel,ExpansionPanelSummary,ExpansionPanelDetails} from '@material-ui/core';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import {Table, TableBody, TableCell, TableHead, TableRow} from '@material-ui/core';
+//import {Table, TableBody, TableCell, TableHead, TableRow} from '@material-ui/core';
 import Paper from '@material-ui/core/Paper';
-//import Paper from '@material-ui/core/Paper';
 import Grid from '@material-ui/core/Grid';
+import Card from '@material-ui/core/Card';
+//import FormLabel from '@material-ui/core/FormLabel';
+import TextField from '@material-ui/core/TextField';
+
 
 import {Select, MenuItem, FormControl} from '@material-ui/core';
+
+
+import CreateDBarea from './CreateDBarea';
+import LoginPage from './LoginPage';
+import {isEmpty, DDTinputLabel} from './helperfuns';
 
 const DEBUG = true;
 const debugstyle = {color: "gray", fontSize: "0.8em", fontStyle:"italic"}
@@ -34,15 +42,6 @@ const FORBIDDEN = "forbidden";
 const CONFLICT = "conflict";
 const NOT_FOUND = "not found";
 const SOME_ERROR = "error";
-
-
-function isEmpty(obj) {
-    for(var key in obj) {
-        if(obj.hasOwnProperty(key))
-            return false;
-    }
-    return true;
-}
 
 
 
@@ -67,6 +66,8 @@ class ChooseDBarea extends React.Component {
     
     render() {
 
+	console.log("PIKKUBUGEJA: 1: selectin leveys ei muutu vaikka pitkä dbnimi, 2: valikko peittää selitystekstejä");
+	
 	if (isEmpty(this.props.appState.dbList)) {
 	    return(<div> No databases available </div>)
 	}
@@ -80,8 +81,8 @@ class ChooseDBarea extends React.Component {
 	}
 
     return(
-	    <div>
-	    <Grid container spacing={3}>
+	    <>
+	    <Grid container>
 	    <Grid item xs={4} >
 	    <FormControl variant="outlined" style={{minWidth:"10em"}}>
 	    <Select value={this.props.appState.dbList[this.state.indexInMenu].dbName} onChange={this.readSchema}>	    
@@ -103,353 +104,10 @@ class ChooseDBarea extends React.Component {
 	    </Box>
 
 
-	    </div>
+	    </>
     )
 	// 
     } 
-}
-
-
-class CreateDBarea extends React.Component {
-
-    
-        constructor(props) {
-	super(props)
-	this.props.appFuns.consumeMsgFromBackend();
-	    this.state = {
-		dbName: "",
-		dbDescription:"",
-		dbUserList:"",
-		dbFieldTypes: {},
-		dbEnums: {},
-		newEnumName: "",
-		newEnumValues: [],
-		newFieldName: "",
-		newFieldType: "string",
-	}
-	}
-
-
-    zeroState = () => {this.setState(
-	    {
-		dbName: "",
-		dbDescription:"",
-		dbUserList:"",
-		dbFieldTypes: {},
-		dbEnums: {},
-		newEnumName: "",
-		newEnumValues: [],
-		newFieldName: "",
-		newFieldType: "string",
-	}
-	)};
-
-    componentDidMount = () => {
-    	// set initial values
-	this.zeroState();
-    }
-
-
-    createSchema = () => {
-
-	let info = { dbName: this.state.dbName,
-		     dbDescription: this.state.dbDescription,
-		     dbUserList: this.state.dbUserList,
-		     dbTemplate: {
-			 dbFieldTypes: this.state.dbFieldTypes,
-			 dbEnums: this.state.dbEnums
-		     }
-		   }
-
-	//console.log("FE create DB ",info)	
-	this.props.appFuns.createSchema(info);
-	this.zeroState();
-	this.props.appFuns.consumeMsgFromBackend();
-    }
-
-    cancelCreateSchema = () => {
-	this.props.appFuns.cancelCreateSchema();
-	this.zeroState();
-	this.props.appFuns.consumeMsgFromBackend();
-    }
-
-
-    /*
-    		    for (let i=0; i<this.state.dbEnums[key].length; i++) {
-			 {this.state.dbEnums[key].map(
-			(value) => { return(<span>{value},</span>)})}
-			 
-    */
-    renderExistingEnums = () => {
-	//console.log(this.state.dbEnums)
-	let enums = [];
-	for (let key in this.state.dbEnums) {
-	    let valuelist = this.state.dbEnums[key].join(',');
-	    enums.push(
-		    <TableRow key={key}>
-		    <TableCell>{key}</TableCell>
-		    <TableCell>{valuelist}
-		</TableCell>
-		    </TableRow>)
-	}
-	return(enums)
-    }
-
-
-        renderExistingFields = () => {
-	    //console.log(this.state.dbFieldTypes)
-	    let enums = [];
-	    for (let key in this.state.dbFieldTypes) {
-	    enums.push(
-		    <TableRow key={key}>
-		    <TableCell>{key}</TableCell>
-		    <TableCell>{this.state.dbFieldTypes[key]}
-		</TableCell>
-		    </TableRow>)
-	    }
-	    return(enums)
-    }
-
-    
-    changeField = (event) => {
-	let newState = this.state;
-	newState[event.target.name] = event.target.value;
-	this.setState(newState);
-//	console.log(this.state)
-    }
-
-
-    changeUserList = (event) => {
-	let newState = this.state;
-	newState.dbUserList = event.target.value.split(",")	
-	this.setState(newState);
-    }
-
-
-    changeEnumName = (event) => {
-	let newState = this.state;
-	newState.newEnumName = event.target.value;
-	this.setState(newState);
-    }
-
-    changeEnumValues = (event) => {
-	let newState = this.state;
-	newState.newEnumValues = event.target.value.split(",")	
-	this.setState(newState);
-    }
-
-
-    createEnum = () => {
-	let newState = this.state;
-	newState.dbEnums[this.state.newEnumName] = this.state.newEnumValues;
-	newState.newEnumName="";
-	newState.newEnumValues=[];
-	this.setState(newState);
-    }
-
-    createField = () => {
-	let newState = this.state;
-	if (this.state.newFieldType==="") { 
-	    newState.dbFieldTypes[this.state.newFieldName] = "string"
-	} else {
-	    newState.dbFieldTypes[this.state.newFieldName] = this.state.newFieldType;
-	}
-	newState.newFieldName="";
-	newState.newFieldType="string";
-	this.setState(newState);
-//	console.log(this.state)
-    }
-
-    renderEnumCreator = (oldEnumsFun) => {
-	return(<Paper elevation={5}>
-	       <Box p={1} fontWeight="fontWeightBold">
-	       
-                Custom types
-               
-	       </Box>
-	       <Box p={2}>
-	       <Table size="small">
-		<TableHead>
-		<TableRow>
-		<TableCell title="e.g. Quality rating"> Type name </TableCell>
-		<TableCell title="e.g. Very good, Average, Nonsense"> Comma-separated values (order determines rendering order) </TableCell><TableCell></TableCell>
-		</TableRow>
-		</TableHead>
-	       <TableBody>
-	       {oldEnumsFun()}
-		<TableRow>
-		<TableCell><OutlinedInput type="text" name="newEnumName" value={this.state.newEnumName} onChange={this.changeEnumName}/></TableCell>
-		<TableCell><OutlinedInput type="text" name="newEnumValues" value={this.state.newEnumValues} onChange={this.changeEnumValues}/></TableCell>
-	       <TableCell>
-	       <Button onClick={this.createEnum} variant="outlined" color="primary" size="small" disabled={(isEmpty(this.state.newEnumName)||isEmpty(this.state.newEnumValues))}>Define a new type</Button>
-	      
-	       </TableCell>
-		</TableRow>
-	       </TableBody></Table>
-	       </Box>
-	       </Paper>
-	)
-    }
-
-
-
-
-
-    renderFieldCreator = (oldFieldsFun) => {
-
-	let fieldTypeOptions = [];
-	fieldTypeOptions.push(<MenuItem key="string" value="string">string</MenuItem>)
-	fieldTypeOptions.push(<MenuItem key="text" value="text">text</MenuItem>)
-	fieldTypeOptions.push(<MenuItem key="url" value="url">URL</MenuItem>)
-	fieldTypeOptions.push(<MenuItem key="number" value="number">number</MenuItem>)
-	for (let typeName in this.state.dbEnums) {
-	    fieldTypeOptions.push(<MenuItem key={typeName} value={typeName}>{typeName}</MenuItem>)
-	}
-	
-
-	console.log("BUGI: alkuarvo select:issä näkyy vain ekaa kenttää lisätessä, reset puuttuu");
-	
-	return(
-		<Paper elevation={5}>
-	       <Box p={2} fontWeight="fontWeightBold">
-	       
-            Fields
-               
-	    </Box>
-			       <Box p={2}>
-	       <Table size="small">
-				<TableHead>
-		<TableRow>
-		<TableCell title="What would you expect to input in a field called 'Field name'?"> Field name </TableCell>
-		<TableCell title="Field type. Custom types you define will be added here."> Field type </TableCell>
-				<TableCell> </TableCell>
-		</TableRow>
-		</TableHead>
-		<TableBody>
-		{oldFieldsFun()}
-		<TableRow>
-		<TableCell><OutlinedInput type="text" name="newFieldName" value={this.state.newFieldName} onChange={this.changeField}/></TableCell>
-		<TableCell>
-		<FormControl variant="outlined" style={{minWidth:"10em"}}>
-		<Select name="newFieldType" value={this.state.newFieldType} onChange={this.changeField} >
-		{fieldTypeOptions}
-	    </Select>
-		</FormControl>
-		</TableCell>
-		<TableCell><Button onClick={this.createField} variant="outlined" size="small" color="primary"
-	    disabled={(isEmpty(this.state.newFieldName)||isEmpty(this.state.newFieldType))}
-		>Add new field</Button>
-		</TableCell>
-		</TableRow>
-		</TableBody></Table>
-		</Box>
-		</Paper>
-	)
-    }
-
-
-
-
-    
-    render() {
-
-
-	//console.log("BEmsg=",this.props.appState.msgFromBackend)
-
-	
-	    return(
-		    
-		    <div>
-		    
-		    
-
-		
-		    <p>
-		    You work in admin mode now. No undos, no confirmation questions.
-		    If you mess it up, cancel and start afresh.
-		    </p>
-		    <hr/>
-
-				
-		    <Typography variant="h6">Create a database</Typography>
-		    <br/>
-
-
-		    <Paper elevation={5}>
-
-		       <Box p={2} fontWeight="fontWeightBold">
-	       
-		Description
-               
-		</Box>
-		    <Box p={2}>
-
-
-		    <Table size="small">
-		    <TableHead>
-		<TableRow>
-		<TableCell title="Database name, preferably shortish."> Name </TableCell>
-		<TableCell title="Free-form text that tells something about the contents or purpose of your database."> Description </TableCell>
-		    <TableCell title="List users who, besides yourself, can access the database. Cannot be changed later. Leave empty for public databases."> Comma-separated user list (leave empty if anybody can use) </TableCell>
-		</TableRow>
-		</TableHead>
-		<TableBody>
-		<TableRow>
-		<TableCell><OutlinedInput variant="outlined" type="text" name="dbName" value={this.state.dbName} onChange={this.changeField}/></TableCell>
-		    <TableCell><OutlinedInput type="text" name="dbDescription" multiline={true} value={this.state.dbDescription} onChange={this.changeField}/></TableCell>
-		    <TableCell><OutlinedInput type="text" name="dbUserList" value={this.state.dbUserList} onChange={this.changeUserList}/></TableCell>
-		</TableRow>
-		</TableBody></Table>
-    			       </Box>
-		  
-		</Paper>
-
-		<br/>
-		
-
-		    {this.renderEnumCreator(this.renderExistingEnums)}
-
-		    <br/>
-
-
-		    {this.renderFieldCreator(this.renderExistingFields)}
-		    <Box mt={4} mb={4}>
-
-
-		    <Grid container>
-		    <Grid item xs={3}>
-		    <Button color="primary" variant="contained" size="large" onClick={this.cancelCreateSchema}>Cancel</Button>
-		    </Grid>
-		    <Grid item xs={3}>
-		    <Button color="primary" variant="contained" size="large"  disabled={isEmpty(this.state.dbFieldTypes)} onClick={this.createSchema}>Create database</Button>
-		    </Grid>		    </Grid>
-
-				</Box>
-
-
-		    <Box mt={2}>
-		    <Typography component="span" color="secondary">{this.props.appState.msgFromBackend}</Typography>
-		    </Box>
-
-
-		    <hr/>
-		    
-		    <Typography variant="h6">Delete a database</Typography>
-		    <p>
-		    Apologies, this is a course project work, not a full-scale application.<br/>
-		    Databases can only be deleted by hand.
-		    Contact a super-admin who can access the database server.
-		    </p>
-		    </div>	  
-	    )
-	    
-
-    } // render
-
-    /*
-
-*/
-    
 }
 
 
@@ -489,22 +147,24 @@ class AddRowArea extends React.Component {
     
 
     render() {
-
-/*
-kohta ei ole auki jos ei ole valittu
-	if (isEmpty(this.props.appState.dbList)) {
+	console.log("AddRowArea, dbId",this.props.appState.dbId)
+	console.log("AddRowArea, userRole",this.props.appState.userRole)
+	
+/* kohta ei ole auki jos ei ole valittu mutta jostain syystä tulee tänne kuitenkin? */ 
+	if (this.props.appState.dbId===NODB||(this.props.appState.userRole!=="editor")) {
 	    return(<div> No database selected. </div>)
 	}
-*/
+	
+
 //	console.log("add row template",	this.props.appState.dbTemplate)
 
 		
 		    return(
-<div>	    
-			  
-			    <Row mode="add" 
+			    <>
+			    <Row renderMode="add" 
 			appState={this.props.appState}
-		   appFuns={this.props.appFuns}
+			appFuns={this.props.appFuns}
+			viewRowIndex="tämän asettaa ADD vaikkei tarttisi"
 			    />
 			   
 			    <Box mt={2}>
@@ -512,7 +172,7 @@ kohta ei ole auki jos ei ole valittu
 	    </Box>
 		
 
-	    </div>
+	    </>
 	)
 
     }    
@@ -523,15 +183,98 @@ kohta ei ole auki jos ei ole valittu
 //import StateHelper from './StateHelper';
 
 // ============================================================
-export class RowContents  extends React.Component 
+ class RowControls extends React.Component
 // ============================================================
 {
+    renderViewControls = () => {
 
-    /*
-    constructor(props) {
-	super(props);
+	/*
+	console.log("renderViewC,indes",this.props.viewRowIndex)
+	console.log("renderViewC,dbRows",this.props.appState.dbRows);
+	console.log("renderViewC, user",this.props.appState.userId);
+	console.log("renderViewC,row",this.props.appState.dbRows[this.props.viewRowIndex])
+	console.log("renderViewC,row.owner",this.props.appState.dbRows[this.props.viewRowIndex]._owner)
+*/
+	
+	
+	if (this.props.appState.dbRows[this.props.viewRowIndex]._owner === this.props.appState.userId) {
+	    
+	    return(
+		    <>
+		    <Button onClick={()=>{this.props.appFuns.initiateUpdateRow(this.props.viewRowIndex);}} variant="outlined" color="primary" size="small">Edit</Button>  
+		    <Button onClick={()=>{this.props.appFuns.initiateDeleteRow(this.props.viewRowIndex);}} variant="outlined" color="primary" size="small">Remove</Button>
+		    </>	    )
+	
+	} else {
+	    return(
+		    <div className="sharingInfo"> Shared by another user<br/> (no editing) </div>
+	    )
+	}
+
+	  
     }
-    */
+
+
+    renderEditControls = () => {
+
+
+	return(
+	    <>
+		<Button onClick={()=>{this.props.appFuns.finalizeUpdateRow();}} variant="outlined" color="secondary" size="small">Save</Button>  
+		<Button onClick={()=>{this.props.appFuns.cancelUpdateRow();}} variant="outlined" color="secondary" size="small">Discard edits</Button>
+		    </>	
+)
+    }
+
+
+    renderRemoveControls = () => {
+
+
+	return(
+	    <>
+
+		<Button variant="outlined" color="secondary" onClick={()=>{this.props.appFuns.finalizeDeleteRow();}}>
+		Confirm remove</Button>
+		<Button variant="outlined" color="secondary" onClick={()=>{this.props.appFuns.cancelDeleteRow();}}>
+		Cancel remove</Button>
+		</>	       
+)
+    }
+
+    
+        renderAddControls = () => {
+	    
+
+	    return(
+		    <>
+		    <Button onClick={this.props.appFuns.createRow} variant="outlined" color="primary" size="small">Add</Button>  
+		    <Button onClick={this.props.appFuns.cancelCreateRow} variant="outlined" color="primary" size="small">Clear fields</Button>
+		    </>
+
+
+)
+    }
+
+
+    render() {
+	switch (this.props.controlMode) {
+	case "edit":
+	    return(this.renderEditControls())
+	case "add":
+	    return(this.renderAddControls())
+	case "remove":
+	    return(this.renderRemoveControls())
+	default:
+	    return(this.renderViewControls())
+	    	} // switch
+    }
+}
+
+
+
+
+export class Row extends React.Component {
+
 
     static emptyRow(template) {
 	// this.props.appState.dbTemplate
@@ -541,9 +284,9 @@ export class RowContents  extends React.Component
 	for (let key in template.dbFieldTypes)
 	{
 	    switch (template.dbFieldTypes[key]) {
-	    case "string": newRow[key]="(string)"; break;
-	    case "text": newRow[key]="(text)"; break;
-	    case "url": newRow[key]="(URL)"; break;
+	    case "string": newRow[key]=""; break;
+	    case "text": newRow[key]=""; break;
+	    case "url": newRow[key]=""; break;
 	    case "number":newRow[key]=0; break;
 	    default:
 		// implicit assumption: everything not listed above is enum
@@ -568,10 +311,14 @@ export class RowContents  extends React.Component
 */
 
 
-    renderSimpleInput = (key, index, typeTag, multiline) => {
-	if (this.props.mode === "edit" || this.props.mode === "add") {
+    renderSimpleInput = (elemwid, key, index, typeTag, multiline) => {
+
+	elemwid = 12;
+	
+	if (this.props.renderMode === "edit" || this.props.renderMode === "add") {
 	    if (!multiline) { multiline=false; }
-	    if (typeTag==="url") { typeTag="string" }
+	    let renderAsType = typeTag;
+	    if (typeTag==="url") { renderAsType="string" }
 
 	    
 	    //console.log("renderSimpleInput",key)
@@ -582,24 +329,30 @@ export class RowContents  extends React.Component
 	    // not tolerated. So don't render undefineds.
 	    if (this.props.appState.rowUnderUpdate[key]===undefined) {
 		//console.log("ongelmakenttiä ei renderöidä");
+		/*
 		return(<TableRow key={index}>
 		       <TableCell>
 		       </TableCell></TableRow>)
+		*/
+		return(
+			<Grid item xs={elemwid} key={index}>
+		       </Grid>)
+
 	    }
 
 	    
 	    	return(
-				<TableRow key={index}>
-			    
-			    <TableCell>
-			    <DDTinputLabel>{key}</DDTinputLabel>
-		<OutlinedInput type={typeTag}
+			
+			    <Grid container item xs={elemwid} key={index}>
+			<DDTinputLabel>{key} </DDTinputLabel>
+			<OutlinedInput type={renderAsType} fullWidth={true} label={key}
+		    placeholder={"("+typeTag+")"}
 	    name={key}
 	    multiline={multiline}
 			value={this.props.appState.rowUnderUpdate[key]}
 			onChange={this.props.appFuns.changeRowUnderUpdate} />
-			    </TableCell>
-			    </TableRow>
+			</Grid>
+			
 	)
 	} // edit/add
 	else {
@@ -614,12 +367,37 @@ export class RowContents  extends React.Component
 */
 	    
 
-	    let st = (typeTag==="url")?{"fontStyle":"italic"}:{};
-	    return( <TableRow key={index}><TableCell style={st} multiline={multiline}>&nbsp;{this.props.appState.dbRows[this.props.viewRowIndex][key]}</TableCell></TableRow>)
+//	    let st = (typeTag==="url")?{"fontStyle":"italic"}:{};
+	    //	    return( <TableRow key={index}><TableCell style={st} multiline={multiline}>&nbsp;{this.props.appState.dbRows[this.props.viewRowIndex][key]}</TableCell></TableRow>)
+	    
+
+	    let fieldElem = [];
+	    switch (typeTag) {
+	    case "url":
+		fieldElem = <TextField name="dbfield" variant="outlined"  margin="normal" style={{"fontStyle":"italic"}} InputProps={{readOnly: true}} label={key} defaultValue={this.props.appState.dbRows[this.props.viewRowIndex][key]}/>
+		    break;
+	    case "text":
+		fieldElem = <TextField name="dbfield" variant="outlined"  margin="normal" InputProps={{readOnly: true}} label={key} defaultValue={this.props.appState.dbRows[this.props.viewRowIndex][key]} multiline/>
+		    break;
+	    case "string":
+	    case "number":
+	    default:
+		fieldElem =
+		    fieldElem = <TextField name="dbfield" variant="outlined" margin="normal" InputProps={{readOnly: true}} label={key} defaultValue={this.props.appState.dbRows[this.props.viewRowIndex][key]} />
+		    break;
+	    } // switch
+	    return(
+		   <Grid item xs={elemwid} key={index}>
+		    <Card style={{padding:"0.25em"}}>
+		    { fieldElem }
+		   </Card>
+
+		   </Grid>
+	    )
 	} // view
     }
 
-
+    
     /*
     changeEnum = (fieldName, value) => {
 	let newVals = this.state.enumVals;
@@ -628,15 +406,21 @@ export class RowContents  extends React.Component
     }
     */
 			
-    renderEnumInput = (key, index, enumName) => {
+    renderEnumInput = (elemwid, key, index, enumName) => {
 
+	elemwid = 12;
+	
 	// lyhenne
 	let templateEnums = this.props.appState.dbTemplate.dbEnums;
-	
-	//console.log('renderEnumInput enter');
-	
-	if (this.props.mode === "edit" || this.props.mode === "add") {
 
+	/*
+	console.log('renderEnumInput enter, enumname=', enumName);
+	console.log('renderEnumInput enter, enums=', templateEnums);
+*/
+	
+	if (this.props.renderMode === "edit" || this.props.renderMode === "add") {
+
+//	    zzz
 	    /*
 	    console.log('renderEnumInput name', enumName);
 	    console.log('renderEnumInput all-enums', templateEnums);
@@ -659,13 +443,19 @@ export class RowContents  extends React.Component
 	    //console.log("renderEnum, value", this.props.appState.rowUnderUpdate[key]);
 
 	    if ((!this.props.appState.rowUnderUpdate[key])||isEmpty(optionTags)) {
-//		console.log("ongelmaselektiä ei renderöidä");
+		//		console.log("ongelmaselektiä ei renderöidä");
+		/*
 		return(<TableRow key={index}>
 		       <TableCell>
 		       </TableCell></TableRow>)
+		*/
+				return(
+		       <Grid item xs={elemwid} key={index}>
+		       </Grid>)
 	    }
 
-//	    console.log("ongelmaselect renderöidään");
+	    //	    console.log("ongelmaselect renderöidään");
+	    /*
 	return(
 	    	<TableRow key={index}>
 			    
@@ -683,20 +473,50 @@ export class RowContents  extends React.Component
 			    </TableCell>
 		</TableRow>
 	)
+	    */
+	    return(
+		    
+		<Grid item xs={elemwid} key={index}>
+		<DDTinputLabel>{key}</DDTinputLabel>
+
+		<FormControl variant="outlined" style={{minWidth:"10em"}}>
+		<Select
+	    	    name={key}
+	    value={this.props.appState.rowUnderUpdate[key]}
+	    onChange={this.props.appFuns.changeRowUnderUpdate}>
+		{optionTags}
+	    </Select>
+		</FormControl>
+		    </Grid>
+
+	)
 	} // add/edit
 	else {
-	
+
+	    /*
 	return(
 	    		<TableRow key={index}>			    
 		<TableCell>{this.props.appState.rowUnderUpdate[key]}			 
 			    </TableCell>
 		</TableRow>
-	) // view
-		    
+	) 
+*/
+	    // view
+
+	    
+	    let fieldElem = <TextField name="dbfield" variant="outlined" margin="normal" InputProps={{readOnly: true}} label={key} defaultValue={this.props.appState.rowUnderUpdate[key]} />
+
+	    	return(
+		       <Grid item xs={elemwid} key={index}>
+			<Card style={{padding:"0.25em"}}>
+			{fieldElem}
+		       </Card>
+			    </Grid>
+	) 
     }
     }
 
-    render() {
+    formattedFields() {
 
 
 //	console.log("RowCont props.jsonrow",this.props.appState.rowUnderUpdate);
@@ -722,6 +542,8 @@ export class RowContents  extends React.Component
 	let wideElems = [];
 	let narrowElems = [];
 
+	let WIDE = 6;
+	let NARROW = 4;
 	
 	fieldnames.forEach( (key, index) => {
 
@@ -734,23 +556,23 @@ export class RowContents  extends React.Component
 		//this.wrapWithTitle(key, () => {
 		switch (this.props.appState.dbTemplate.dbFieldTypes[key]) {
 		case "string":
-		    wideElems.push(this.renderSimpleInput(key, index, "text"));
+		    wideElems.push(this.renderSimpleInput(WIDE, key, index, "text"));
 		    break;
 
 		case "url":
-		    wideElems.push(this.renderSimpleInput(key, index, "url"));
+		    wideElems.push(this.renderSimpleInput(WIDE, key, index, "url"));
 		    break;
 
 		case "text":
 		    let multiline=true;
-		    wideElems.push(this.renderSimpleInput(key, index, "text", multiline));
+		    wideElems.push(this.renderSimpleInput(WIDE, key, index, "text", multiline));
 		    break;
 		    			
 		case "number":
 		    //console.log("kutsuu renderSimple (nro)")
 
 
-		    narrowElems.push(this.renderSimpleInput(key, index, "number"));
+		    narrowElems.push(this.renderSimpleInput(NARROW, key, index, "number"));
 		    //console.log("narrow=",narrowElems)
 		    break;
 		    
@@ -764,18 +586,19 @@ export class RowContents  extends React.Component
 		    if (enumTypes.includes(this.props.appState.dbTemplate.dbFieldTypes[key])) {
 
 			/*
-			console.log("RowCedit, löytyi enumtyyppi");
-			console.log("if ",this.props.appState.dbTemplate.dbFieldTypes[key])
+			console.log("RowContents, kenttätyypit",this.props.appState.dbTemplate.dbFieldTypes)
+			console.log("RowContents, key=",key)
+			console.log("RowContents, löytyi enumtyyppi",this.props.appState.dbTemplate.dbFieldTypes[key])
 */
 
-
+			
 			let enumName = this.props.appState.dbTemplate.dbFieldTypes[key];
 
 
 			//console.log("kutsuu renderEnum",this.props.appState.rowUnderUpdate[key])
 			
 			
-			narrowElems.push(this.renderEnumInput(this.props.mode, key, index, enumName));
+			narrowElems.push(this.renderEnumInput(NARROW, key, index, enumName));
 
 			//console.log("narrow=",narrowElems)
 			
@@ -789,111 +612,13 @@ export class RowContents  extends React.Component
 	    } //map:n fun	     
 	) // map
 
-
-	
-	return( <div><Table size="small">
-		<TableBody>
-		<TableRow><TableCell>
-		{wideElems}
-		</TableCell>		
-		<TableCell>
-		{narrowElems}
-		</TableCell></TableRow>
-		</TableBody>
-		</Table>
-		</div>
-	      )
-    
+	return({ wide: wideElems, narrow: narrowElems })
 
     }
-
-}
-
-// ============================================================
- class RowControls extends React.Component
-// ============================================================
-{
-    renderViewControls = () => {
-
-	
-	if (this.props.appState.dbRows[this.props.viewRowIndex]._owner === this.props.appState.userId) {
-	    
-	    return(
-		    <TableCell>
-		    <Button onClick={()=>this.props.initiateRowEdit(this.props.viewRowIndex)} variant="outlined" color="primary" size="small">Edit</Button>  
-		    <Button onClick={()=>this.props.appFuns.initiateRowRemove(this.props.viewRowIndex)} variant="outlined" color="primary" size="small">Remove</Button>
-		    </TableCell>
-	    )
-	
-	} else {
-	    return(
-		    <div className="sharingInfo"> Shared by another user<br/> (no editing) </div>
-	    )
-	}
-
-	  
-    }
-
-
-    renderEditControls = () => {
-
-
-	return(
-	    <TableCell>
-		    <Button onClick={this.props.appFuns.updateRow} variant="outlined" color="primary" size="small">Save</Button>  
-		    <Button onClick={this.props.appFuns.cancelUpdateRow} variant="outlined" color="primary" size="small">Discard edits</Button>
-		    </TableCell>
-	
-)
-    }
-
-    
-        renderAddControls = () => {
-	    
-
-	    return(
-		    <TableCell>
-		    <Button onClick={this.props.appFuns.createRow} variant="outlined" color="primary" size="small">Add</Button>  
-		    <Button onClick={this.props.appFuns.cancelCreateRow} variant="outlined" color="primary" size="small">Cancel</Button>
-		    </TableCell>
-
-
-)
-    }
-
-
-    render() {
-	switch (this.props.mode) {
-	case "edit":
-	    return(this.renderEditControls())
-	case "add":
-	    return(this.renderAddControls())
-	default:
-	    return(this.renderViewControls())
-	    	} // switch
-    }
-}
-
-
-
-
-export class Row extends React.Component {
-
-    
-    constructor(props) {
-	super(props)
-	this.state = { mode: this.props.mode,
-		     }
-    }
-    
-    toEditMode = () => { this.setState({mode:"edit"}) }
-    toRemoveMode = () => { this.setState({mode:"remove"}) }
-    toViewMode = () => { this.setState({mode:"view"}) }
-    toAddMode = () => { this.setState({mode:"add"}) }
 
     
     render() {
-
+	
 	/*
 	if (isEmpty(this.props.appState.dbTemplate)) {
 	    return(<p>No database.</p>);
@@ -901,95 +626,54 @@ export class Row extends React.Component {
 */
 
 
-	console.log("Row:",this.state.mode)
+	console.log("Row:",this.props.renderMode)
 
-	switch (this.state.mode) {
-	case "add":
+	// add, edit, remove, view
+	let ctrlsMode = this.props.renderMode;
+	//if (this.props.renderMode==="remove") { ctrlsMode="edit"; }
 
-	    //console.log("Row-tag, mode=add, props.jsonrow",this.props.appState.rowUnderUpdate)
-	    //console.log("Row-tag, mode=add, state.jsonrow",this.state.jsonrow)
-	    
-	    return(
-		    <Table><TableBody>
-		    <RowContents mode="add"
-		appState={this.props.appState}
-		appFuns={this.props.appFuns}
-		    />
 
-		    <RowControls mode="add"
-		appState={this.props.appState}
-		   appFuns={this.props.appFuns}
-		   />
-</TableBody></Table>
-			  )
-	    
+	let fields = this.formattedFields();
+	
+		    return(<>
+		   <Paper elevation={5} >
+			   <Grid container spacing={3}>  
+		   
+       	    	   <Grid item xs={6}>
+			   <Card elevation={0} style={{padding:"0.25em"}}>
+			   <Grid container spacing={3}>  
+			   {fields.wide}
+			   </Grid>
+			   </Card>
+		   </Grid>
 
-	case "edit":
+			   <Grid item xs={4}>
+			   <Card elevation={0} style={{padding:"0.25em"}}>
+			   <Grid container spacing={3}>  
+			   {fields.narrow}
+			   		   </Grid>
+			   </Card>
+		   </Grid>
 
-	    return(<Table><TableBody><TableRow><TableCell>
-		   <RowContents mode="edit"
+			   
+			   <Grid item xs={2}>
+
+			   <RowControls controlMode={ctrlsMode}
 		   appState={this.props.appState}
 		   appFuns={this.props.appFuns}
+			   viewRowIndex={this.props.viewRowIndex}
 		   />
-		   <p className="KESKEN"> BUGI: nrokenttään ei voi kirj numeroa; nrokentän muutettu arvo ei näy ainakaan oikein</p>
-		   </TableCell><TableCell>
-		   <RowControls mode="edit"
-		   appState={this.props.appState}
-		   appFuns={this.props.appFuns}
-		   />
-		   </TableCell></TableRow></TableBody></Table>
-	    )
 
-	    
 
-	case "remove":
+		   		   </Grid>
+		   </Grid>
 
-	    return(
-		    <div className="removeConfirm">
-		    <Table><TableBody><TableRow><TableCell>
-		    <RowContents mode="view"
-		appState={this.props.appState}
-		appFuns={this.props.appFuns}
-		    />
-		    </TableCell>
-		    <TableCell>
-		    <div><Button text="Confirm remove" onClick={this.props.appFuns.deleteRow}/></div>
-		    <div><Button text="Cancel remove" onClick={this.props.appFuns.cancelDeleteRow}/></div>	    </TableCell>	       
-		    </TableRow></TableBody></Table>
 
-	</div>
-	   	    
-	    )
 
-	    
+		       </Paper>
 
-	default:
-	    //console.log("rivi, view");
-
-	return(
-		
-		<Table><TableBody><TableRow>
-		<TableCell>
-		<RowContents mode="view"
-	    appState={this.props.appState}
-	    appFuns={this.props.appFuns}
-	    viewRowIndex = {this.props.viewRowIndex}
-		/>
-		</TableCell>
-		<TableCell>
-		<RowControls mode="view"
-	    	    appState={this.props.appState}
-	    appFuns={this.props.appFuns}
-	    viewRowIndex = {this.props.viewRowIndex}
-		/>
-	       </TableCell>
-		</TableRow></TableBody></Table>
-		
+		   <br/></>
 	)
-
-	    
-
-	} // switch
 
 
     } // render
@@ -999,7 +683,8 @@ export class Row extends React.Component {
 
 class ContentsArea extends React.Component {
 
-    
+
+
 
     
     //inEditMode
@@ -1014,8 +699,17 @@ class ContentsArea extends React.Component {
     
     
     render() {
+	/*
 	console.log("ContentArea, enter, rivejä=",this.props.appState.dbRows.length)
 		console.log("ContentArea, enter, rivit=",this.props.appState.dbRows)
+*/
+
+
+	
+	let BEmsgField = <Box mt={2}>
+	    <Typography component="span" color="secondary">{this.props.appState.msgFromBackend}</Typography>
+	    </Box>
+
 
 	
 	/* aina aikajärjestys */
@@ -1034,13 +728,19 @@ class ContentsArea extends React.Component {
 		
 		if (this.props.appState.settings.showShared || dbrow._owner === this.props.appState.userId) {
 
+		    
+		    				    let renderMode="view";
+				    if (this.props.appState.rowUpdateMode!=="view") {
+					if (dbrow._id===this.props.appState.rowUnderUpdate._id) { renderMode=this.props.appState.rowUpdateMode; }
+				    }
 
-		return(		    
-			<Row key={dbrow._id} mode="view"
-		    appState = {this.props.appState}
-		    appFuns = {this.props.appFuns}
-		    viewRowIndex = {index}
-			/>
+		    return(	<Grid key={index} item xs={12}>	    
+				<Row key={dbrow._id} renderMode={renderMode}
+				appState = {this.props.appState}
+				appFuns = {this.props.appFuns}
+				viewRowIndex = {index}				
+				/>
+				</Grid>
 		)} else { return([]) }
 	    }) // map
 	} // if no grouping
@@ -1060,8 +760,13 @@ class ContentsArea extends React.Component {
 			    if (dbrow[this.props.appState.settings.groupBy]===groupingVariableValue) {
 
 				if (this.props.appState.settings.showShared || dbrow._owner === this.props.appState.userId) {
+				    let renderMode="view";
+				    if (this.props.appState.rowUpdateMode!=="view") {
+					if (dbrow._id===this.props.appState.rowUnderUpdate._id) { renderMode=this.props.appState.rowUpdateMode; }
+				    }
 				return(
-					<Row key={dbrow._id} mode="view"
+					<Row key={dbrow._id}
+				    renderMode={renderMode}
 				    viewRowIndex = {index}
 				    appState = {this.props.appState}
 				    appFuns = {this.props.appFuns}
@@ -1078,11 +783,11 @@ class ContentsArea extends React.Component {
 
 
 		    rows.push(
-			    <div key={groupingVariableValue}>
+			    <div key={groupingVariableValue}>			    
 			    <div className="groupTitle">{groupingVariableValue}</div>
-			    <div className="groupContentsBox">
+			    <Grid container spacing={3}>
 			    {rows2}
-			    </div>
+			</Grid>
 			    </div>
 		    );
 		    
@@ -1090,35 +795,37 @@ class ContentsArea extends React.Component {
 	    } // for
 	}
 
-//	console.log('contents',rows)
-	
+//	('contents',rows)
+
+	console.log("PUUTTUU: rivin merkkaaminen jaetuksi/yksityiseksi")
 	return(
-		<div>
-		
-		<p className="KESKEN"> PUUTTUU: tyhjien kenttien renderöinti viemään tilaa (ui-kirjasto tehnee?) </p>
-		<p className="KESKEN"> PUUTTUU: rivin merkkaaminen jaetuksi/yksityiseksi</p>
+		<>
+		<Grid container spacing={3}>
+		<Grid item xs={12}>
+		{BEmsgField}
+		</Grid>
+		</Grid>
+		<Grid container spacing={3}>
 		{rows}
-	    </div>
+		</Grid>
+	    </>
 	)
     }
 
 }
 
 
-const DDTinputLabel= withStyles({
+
+/*
+const DDTformLabel= withStyles({
   root: {
       color: "text.secondary",
-      fontSize: "0.8em"
+      fontSize: "0.8em",
+      padding: "0.25em",
   },
-})(InputLabel);
+})(FormLabel);
+*/
 
-
-// color and variant cannot be set here
-const DDTbutton= withStyles({
-  root: {
-      margin: "1.5em"
-  },
-})(Button);
 
 /*
 const DDTerrorBox= withStyles({
@@ -1142,72 +849,6 @@ const acceptDiscardButtons = (cancelText, cancelFun, acceptText, acceptFun, disa
 			</Box>)
 }
 */
-
-class LoginPage extends React.Component {
-
-    constructor(props) {
-	super(props);
-	this.props.appFuns.consumeMsgFromBackend();
-	this.state = {userName: "", password: "",buttonDisabled:true}
-    }
-  
-    change = (event) => {
-        let state = this.state;
-        state[event.target.name] = event.target.value;
-        this.setState(state);
-	let hasData = (this.state.userName !== "" && this.state.password !== "");
-	this.setState({buttonDisabled: !hasData});
-	this.props.appFuns.consumeMsgFromBackend();
-    }
-
-    // field changed clear msgFromBackend, but
-    // buttons must clear it also since after an error a new login
-    // can be attempted without changing the fields  
-    clickOk = () => {
-	let buttonFun = (this.props.action==="signup")?this.props.appFuns.finalizeSignUp:this.props.appFuns.finalizeSignIn;
-	this.props.appFuns.consumeMsgFromBackend();
-	buttonFun(this.state.userName, this.state.password);
-    }
-
-
-    clickCancel = () => {
-	this.props.appFuns.consumeMsgFromBackend();
-	this.props.appFuns.cancelSignUpIn();
-    }
-
-    render() {
-	let buttonName = (this.props.action==="signup")?"Sign up":"Sign in";
-
-	return(
-		<div>
-		<Typography component="div" align="center">
-
-		<Box m={2} color="error.main" fontSize="0.7em">
-		<p>{this.props.appState.msgFromBackend}</p>
-		</Box>
-		<Box m={2}>
-		<DDTinputLabel>Username</DDTinputLabel>
-			    	<Box m={1}>
-		<OutlinedInput m={2} type="string" margin="dense" name="userName" value={this.state.userName} onChange={this.change}/>
-		</Box>		</Box>
-
-		
-	    	<Box m={2}>
-		<DDTinputLabel>Password</DDTinputLabel>
-					    	<Box m={1}>
-		<OutlinedInput type="password" margin="dense" name="password" value={this.state.password} onChange={this.change}/>
-		</Box>		</Box>
-
-	    <Box m={2}>
-		<DDTbutton color="primary" variant="contained" size="large" onClick={this.clickCancel}>Cancel</DDTbutton>
-		<DDTbutton color="primary" variant="contained" size="large"  disabled={this.state.buttonDisabled} onClick={this.clickOk}>{buttonName}</DDTbutton>
-		</Box>
-		</Typography>
-
-	    </div>
-	)
-    }   
-}
 
     /*
 		<Box m={2}>
@@ -1290,6 +931,10 @@ class Routes {
     static deleteRow(userId, dbId, rowId) { return('/epdb/content/'+userId+"/"+dbId+"/"+rowId); }
 }
 
+
+const NODB = 0;
+const NOBODY = 0;
+
 class App extends React.Component {
 
 
@@ -1313,6 +958,7 @@ class App extends React.Component {
 	    msgFromBackend: "",
 	    settings: {},
 	    rowUnderUpdate: {},
+	    rowUpdateMode: "",
 	}
 
     } // constr
@@ -1330,12 +976,12 @@ class App extends React.Component {
     zeroState = () => {this.setState(
 	{
 	    pageState: "browse",
-	    userId: 0,
+	    userId: NOBODY,
 	    userName: "",
 	    sessionToken: "",
 	    userRole: "visitor",
 	    dbList: [],
-	    dbId: 0,
+	    dbId: NODB,
 	    dbName: "",
 	    dbDescription: "",
 	    dbRows: [],
@@ -1343,7 +989,17 @@ class App extends React.Component {
 	    msgFromBackend: "",
 	    settings: {groupBy: "none", showShared: true },
 	    rowUnderUpdate: {},
+	    rowUpdateMode: "view",
 	})};
+
+
+    
+    toEditMode = () => { console.log("toEditMode"); this.setState({rowUpdateMode:"edit"}) }
+    toRemoveMode = () => { console.log("toRemoveMode"); this.setState({rowUpdateMode:"remove"}) }
+    toViewMode = () => { console.log("toViewMode"); this.setState({rowUpdateMode:"view"}) }
+//    toAddMode = () => { this.setState({mode:"add"}) }
+
+
     
     appToBrowseState = () => { this.setState({pageState: "browse"}) }
     appToSignUpState = () => { this.setState({pageState: "signup"}) }
@@ -1394,6 +1050,8 @@ class App extends React.Component {
 	fetch(path,req)          
             .then( (response) => {
 
+		console.log("fetchAndProcess resp",response)
+		
 		switch (response.status) {
 		case 200:
                     response.json().then( (data) => { gotDataFun(data, OK) } )
@@ -1531,12 +1189,19 @@ class App extends React.Component {
 	//console.log("finalizeSignIn, req", req);
 	this.fetchAndProcess(Routes.signin(), req, "App.js/finalizeSignIn",
 			     (data, status)=>{
+				 console.log("finalizeSignIn, status",status)
 				 switch (status) {				 
 				 case OK:
+				     console.log("finalizeSignIn, ok",status)
 				     this.setState({userId:data.userId, sessionToken:data.sessionToken})
 				     this.userIntoEditor();
 				     this.appToBrowseState();
+				     // may see more databases after logging in
 				     this.readAllSchemas();
+				     if (this.state.dbId!==NODB) {
+					 // may see more rows after logging in
+					 this.readAllRows(this.state.dbId);
+				     }
 				 console.log("signed in "+userName+", id="+this.state.userId+" token="+this.state.sessionToken)
 				     break;
 				 case FORBIDDEN:				     				     
@@ -1620,7 +1285,7 @@ class App extends React.Component {
 					 dbName: data.dbName,
 					 dbDescription: data.dbDescription,
 					 dbTemplate: data.dbTemplate,
-					 rowUnderUpdate: RowContents.emptyRow(data.dbTemplate)
+					 rowUnderUpdate: Row.emptyRow(data.dbTemplate)
 				     });
 
 				     
@@ -1652,11 +1317,12 @@ class App extends React.Component {
 				 case OK:
 
 				     this.setState({
-					 dbRows: data,					 
+					 dbRows: data,
+					 dbId: dbId
 				     });
-
+				     this.toViewMode();
 				     
-				     this.setMsgFromBackend("Database contents retrieved.");
+				     this.setMsgFromBackend("Retrieved newest database contents.");
 				     
 				     console.log("readAllRows onnistui, riveja=", this.state.dbRows.length);
 				     break;
@@ -1664,7 +1330,7 @@ class App extends React.Component {
 				     this.setMsgFromBackend("No access to database.");
 				     break;
 				 default:
-				     this.setMsgFromBackend("Could note read database. We don't know why.");
+				     this.setMsgFromBackend("Could not read database. We don't know why.");
 				     break;
 				 } // switch
 			     }) // fetch	
@@ -1683,11 +1349,15 @@ class App extends React.Component {
 	this.fetchAndProcess(
 	    Routes.createRow(this.state.userId, this.state.dbId), req, "App.js/createRow",
 	    (data, status)=>{
+
+		console.log("createRow, data", data)
+		console.log("createRow, status", status)
+		
 		switch (status) {				 
 		case OK:
 
 		    this.setMsgFromBackend("Database row added.");
-		    this.getDBcontent();
+		    this.readAllRows(this.state.dbId);
 				     
 		    //console.log("createRow onnistui");
 		    break;
@@ -1695,19 +1365,29 @@ class App extends React.Component {
 		    this.setMsgFromBackend("No access to database.");
 		    break;
 		default:
-		    this.setMsgFromBackend("Could note update database. We don't know why.");
+		    this.setMsgFromBackend("Could not update database. We don't know why.");
 		    break;
 		} // switch
 	    }) // fetch	
 	
-	this.setState({rowUnderUpdate: RowContents.emptyRow(this.state.dbTemplate)});
+	this.setState({rowUnderUpdate: Row.emptyRow(this.state.dbTemplate)});
     }
 
+  
     cancelCreateRow = () => {
-	this.setState({rowUnderUpdate: RowContents.emptyRow(this.state.dbTemplate)});
+	console.log("cancelCreateRow, kenttien pitäisi tyhjetä");
+	this.setState({rowUnderUpdate: Row.emptyRow(this.state.dbTemplate)});
     }
 
-    updateRow = () => {
+
+    initiateUpdateRow = (index) => {
+	console.log("initiateUpdateRow")
+	this.setState({rowUnderUpdate: this.state.dbRows[index]})
+	this.toEditMode();
+    }
+
+    
+    finalizeUpdateRow = () => {
 
 
 	let req = this.makePutReq(this.state.rowUnderUpdate);
@@ -1721,7 +1401,7 @@ class App extends React.Component {
 		case OK:
 
 		    this.setMsgFromBackend("Database row updated.");
-		    this.getDBcontent();
+		    this.readAllRows(this.state.dbId); 
 				     
 		    //console.log("updateRow onnistui");
 		    break;
@@ -1734,15 +1414,24 @@ class App extends React.Component {
 		} // switch
 	    }) // fetch	
 	
-	this.setState({rowUnderUpdate: RowContents.emptyRow(this.state.dbTemplate)});
+	this.setState({rowUnderUpdate: Row.emptyRow(this.state.dbTemplate)});
+	this.toViewMode();
     }
 
     cancelUpdateRow = () => {
-	this.setState({rowUnderUpdate: RowContents.emptyRow(this.state.dbTemplate)});
+	this.setState({rowUnderUpdate: Row.emptyRow(this.state.dbTemplate)});
+	this.toViewMode();
     }
 
 
-    deleteRow = () => {
+    initiateDeleteRow = (index) => {
+	console.log("initiateDeleteRow")
+	this.setState({rowUnderUpdate: this.state.dbRows[index]})
+	this.toRemoveMode();
+    }
+    
+
+	finalizeDeleteRow = () => {
 	
 	let req = this.makeDeleteReq(this.state.rowUnderUpdate);
 
@@ -1755,7 +1444,7 @@ class App extends React.Component {
 		case OK:
 
 		    this.setMsgFromBackend("Database row updated.");
-		    this.getDBcontent();
+		    this.readAllRows(this.state.dbId); 
 				     
 		    //console.log("deleteRow onnistui");
 		    break;
@@ -1768,12 +1457,13 @@ class App extends React.Component {
 		} // switch
 	    }) // fetch	
 	
-	this.setState({rowUnderUpdate: RowContents.emptyRow(this.state.dbTemplate)});
+	    this.setState({rowUnderUpdate: Row.emptyRow(this.state.dbTemplate)});
+	    this.toViewMode();
     }
 
     cancelDeleteRow = () => {
-	this.setState({rowUnderUpdate: RowContents.emptyRow(this.state.dbTemplate)});
-
+	this.setState({rowUnderUpdate: Row.emptyRow(this.state.dbTemplate)});
+	this.toViewMode();
     }
 
     // ==================================================
@@ -1786,9 +1476,10 @@ class App extends React.Component {
     
     render() {
 
-	console.log("BUGI: manage databases (eli editor-rooli) putoaa pois käytöstä kun avaa choosedb:n")
+	console.log("TextField: jos kentän arvo on tyhjä menee label-tieto ite kenttään (ominaisuus muttei hyvä)")
 	
-//	console.log("userRole", this.state.userRole)
+	console.log("userRole", this.state.userRole)
+	console.log("row mode", this.state.rowUpdateMode)
 //	console.log("muista AddArea:mn disabled toisinpäin");
 	
 	const functionList = {initiateSignUp:this.initiateSignUp,
@@ -1803,8 +1494,13 @@ class App extends React.Component {
 			      readSchema:this.readSchema,
 			      changeRowUnderUpdate:this.changeRowUnderUpdate,
 			      createRow:this.createRow,
-			      updateRow:this.updateRow,
-			      deleteRow:this.deleteRow,
+			      cancelCreateRow:this.cancelCreateRow,
+			      initiateUpdateRow:this.initiateUpdateRow,
+			      finalizeUpdateRow:this.finalizeUpdateRow,
+			      cancelUpdateRow:this.cancelUpdateRow,
+			      initiateDeleteRow:this.initiateDeleteRow,			      
+			      finalizeDeleteRow:this.finalizeDeleteRow,
+			      cancelDeleteRow:this.cancelDeleteRow,			      
 			     };
 	
 	switch (this.state.pageState) {
@@ -1862,7 +1558,7 @@ class App extends React.Component {
 		</ExpansionPanelDetails>
 
 	    	    </ExpansionPanel >
-		<ExpansionPanel disabled={(!this.state.dbId)} onChange={this.consumeMsgFromBackend}>
+		<ExpansionPanel disabled={(this.state.dbId===NODB)} onChange={this.consumeMsgFromBackend}>
 
 	    <ExpansionPanelSummary
 	    expandIcon={<ExpandMoreIcon />}
@@ -1878,10 +1574,10 @@ class App extends React.Component {
 		</ExpansionPanelDetails>
 
 	    	    </ExpansionPanel >
-		<ExpansionPanel disabled={((!this.state.dbId) || (this.state.userRole!=="editor"))}
+		<ExpansionPanel disabled={((this.state.dbId===NODB) || (this.state.userRole!=="editor"))}
 	    onChange={()=>{
 		this.consumeMsgFromBackend();
-		let emptyRow = RowContents.emptyRow(this.state.dbTemplate);
+		let emptyRow = Row.emptyRow(this.state.dbTemplate);
 		this.setState({rowUnderUpdate:emptyRow});
 	    }}
 		>
@@ -1893,6 +1589,7 @@ class App extends React.Component {
 		>
 		<Typography color="primary" >Add new data</Typography>
 		</ExpansionPanelSummary>
+		
 		<ExpansionPanelDetails>
 		<Typography component="div">
 		<AddRowArea appState={this.state} appFuns={functionList}/>
@@ -1900,7 +1597,7 @@ class App extends React.Component {
 	       </Typography>
 		</ExpansionPanelDetails>
 	    </ExpansionPanel>
-		<ExpansionPanel disabled={(!this.state.dbId)} onChange={this.consumeMsgFromBackend}>
+		<ExpansionPanel disabled={(this.state.dbId===NODB)} onChange={this.consumeMsgFromBackend}>
 
 	    <ExpansionPanelSummary
 	    expandIcon={<ExpandMoreIcon />}
@@ -1911,9 +1608,9 @@ class App extends React.Component {
 		<Typography color="primary" >Database contents{this.showDBname()}</Typography>
 		</ExpansionPanelSummary>
 		<ExpansionPanelDetails>
-		<Typography component="div">
+		
 		<ContentsArea appState={this.state} appFuns={functionList}/>
-	       </Typography>
+
 		</ExpansionPanelDetails>
 
 	    </ExpansionPanel>

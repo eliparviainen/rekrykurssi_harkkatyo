@@ -80,7 +80,6 @@ function epdbSetSystemFields(record, userId) {
     let newRecord = record;
     newRecord["_timestamp"] = Date.now();
     newRecord["_owner"] = mongoose.Types.ObjectId(userId);
-    console.log("KESKEN: _isPublic ei riitä julkisuusmekanismiksi (private,shared,moderator-locked")
     newRecord["_isPublic"] = true;
 
     return(newRecord)
@@ -94,28 +93,32 @@ return schemaDefJson
 }
     
 function mongooseJsonFromTemplate(templateForAddingDB) {
+    ifVerbose("mongooseJsonFromTemplate, enter");
+
+    console.log("templateForAddingDB",templateForAddingDB);
 let schemaDefJson = {};
 let enumTypeList = [];
-for (let fieldname in templateForAddingDB.enums) { enumTypeList.push(fieldname) };
+for (let fieldname in templateForAddingDB.dbEnums) { enumTypeList.push(fieldname) };
 //console.log(enumTypeList)
 //console.log(enumTypeList.includes("enum2"))
     schemaDefJson = epdbCreateSystemFields(schemaDefJson);
     
-for (let fieldname in templateForAddingDB.fieldTypes) {
+for (let fieldname in templateForAddingDB.dbFieldTypes) {
 
-    // enumTypeList.includes(templateForAddingDB.fieldTypes[fieldname])) {
-    let enumInd = enumTypeList.indexOf(templateForAddingDB.fieldTypes[fieldname]);
+    // enumTypeList.includes(templateForAddingDB.dbFieldTypes[fieldname])) {
+    let enumInd = enumTypeList.indexOf(templateForAddingDB.dbFieldTypes[fieldname]);
     if (enumInd>=0) {
-	schemaDefJson[fieldname] = { type: String, enum: templateForAddingDB.enums[enumTypeList[enumInd]] };
+	console.log("..JsonFromTemplate, adding enum");
+	schemaDefJson[fieldname] = { type: String, enum: templateForAddingDB.dbEnums[enumTypeList[enumInd]] };
 
     } else {
-	switch(templateForAddingDB.fieldTypes[fieldname]) {
+	console.log("..JsonFromTemplate, adding ",templateForAddingDB.dbFieldTypes[fieldname]);
+	switch(templateForAddingDB.dbFieldTypes[fieldname]) {
 	case "text":
 	case "string":
 	    schemaDefJson[fieldname] = { type: String };
 	    break;
-	case "url":
-	    console.log("KESKEN: joko frontendissä on URL-render?");
+	case "url":	    
 	    // tarttee: npm install mongoose-type-url
 	    schemaDefJson[fieldname] = { type: mongoose.SchemaTypes.Url };
 	    break;
@@ -123,8 +126,8 @@ for (let fieldname in templateForAddingDB.fieldTypes) {
 	    schemaDefJson[fieldname] = { type: Number };
 	    break;
 	default:
-	    console.log("tuntematon kentäntyyppi",templateForAddingDB.fieldTypes[fieldname]);
-	}
+	    console.log("tuntematon kentäntyyppi",templateForAddingDB.dbFieldTypes[fieldname]);
+	} // switch
     }
 //    schemaDefJson[fieldname] = 
 }
@@ -171,12 +174,12 @@ module.exports.getAllRows = function(userId, dbId, sendFun) {
 	,(err, dbRows) => {
 
 	    if (isEmpty(dbRows)) { return sendFun(err, []) }
-	    console.log("currentDB:n rivit ",dbRows)
-	
-		return sendFun(err, dbRows);
+	    //console.log("currentDB:n rivit ",dbRows)
+
+	    mongoose.deleteModel(modelName)
+	    return sendFun(err, dbRows);
 	}) // currentDB.find
 
-	mongoose.deleteModel(modelName)
     }) // dblist.find
 }
 
@@ -213,53 +216,100 @@ module.exports.getHeader = function(userId, dbId, sendFun) {
     // router has already checked that userId is allowed to access dbId
     // (n.b. is the database is public, even the "nobody" userID===0 can read it)
     
-    console.log("list one db, user=",userId)
-        console.log("list one db, db=",dbId)
+    console.log("getHeader, user=",userId)
+        console.log("getHeader, db=",dbId)
 
     epdbDatabaseSchema.find({_id: dbId}, (err, dbEntries) => {
-	console.log(dbEntries)
+	console.log("getHeader, entries",dbEntries)
 	return (sendFun(err,dbEntries[0]));
     }) // find
 
 }
 
-module.exports.createRow = function(ownerId, dbId, rowSpecs, sendFun) {
+const handleRow = function(task, ownerId, dbId, rowSpecs, sendFun) {
 
 
-    ifVerbose("createRow enter");
+
+    ifVerbose("handleRow enter");
     
-   	
+    
     epdbDatabaseSchema.find({_id:dbId}, (err, dbs) => {
 
 	if (isEmpty(dbs)) { return sendFun(err, []) }	
 	let dbSchema = dbs[0];
 
-   
-    let modelName = "schemaFor"+dbSchema.id;
-	let schemaDefJson = mongooseJsonFromTemplate(dbSchema.dbTemplate);
-	let newDB = mongoose.model(modelName, schemaDefJson);
-
-	KESKEN
-	tietokantaan ei mene templaten mukaset kentät lainkaan
 	
-	rowContents = epdbSetSystemFields(rowSpecs, ownerId)
-	newRow = new newDB(rowContents);
+	let modelName = "schemaFor"+dbSchema.id;
+	let schemaDefJson = mongooseJsonFromTemplate(dbSchema.dbTemplate);
+	let dbModel = mongoose.model(modelName, schemaDefJson);
 
-	console.log("createRow template",dbSchema.dbTemplate)
-	console.log("createRow contents",rowSpecs)
-	console.log("createRow contents",rowContents)
+	for (let key in rowSpecs) {
+	    switch (dbSchema.dbTemplate.dbFieldTypes[key]) {
+	    case 'url': if (rowSpecs[key]==="") { rowSpecs[key] = "EMPTYURL"}; break;
+	    } // switch
+	}
+	
+	
+	switch(task) {
+	case 'create':
 
-    newRow.save(function(err, res) {
-	if (err) throw err;
-	//console.log('rivi '+newRow+' lisätty');
-	console.log('rivi lisätty kantaan '+modelName);
-    });
 
-    // muuten valittaa että on jo
-    mongoose.deleteModel(modelName);
-    })
-}
+	    // zzz
+	    rowContents = epdbSetSystemFields(rowSpecs, ownerId)
+	    newRow = new dbModel(rowContents);
+
+	    console.log("createRow template",schemaDefJson)
+	    console.log("createRow newRow",newRow)
+	    /*
+
+	      console.log("createRow template",dbSchema.dbTemplate)
+	      console.log("createRow contents",rowSpecs)
+	      console.log("createRow contents",rowContents)
+	    */
+
+	    newRow.save(function(err, res) {
+		if (err) throw err;
+		console.log('createRow: added row ',res);
+		console.log('createRow: added to db ',modelName);
+		
+		return( sendFun(err, res) );
+	    }) // save
+	    break;
+
+	case "delete":
+	    dbModel.deleteOne({_id: rowSpecs._id}, sendFun);
+	    break;
+	case 'update':	
+	default:
+	    // tällä voisi korvata createnkin mutta antaa olla, se osa koodia toimii jo
+	    dbModel.findOneAndUpdate({_id:rowSpecs._id}, rowSpecs, {upsert:true}, sendfun);
+	    break;
+	} // switch
+	
+	// muuten valittaa että on jo
+	mongoose.deleteModel(modelName);
     
+    }) // find db
+
+}
+
+
+module.exports.createRow = function(ownerId, dbId, rowSpecs, sendFun) {
+    handleRow("create", ownerId, dbId, rowSpecs, sendFun);
+}
+
+
+
+module.exports.updateRow = function(ownerId, dbId, rowSpecs, sendFun) {
+    handleRow("update", ownerId, dbId, rowSpecs, sendFun);
+}
+
+  
+
+module.exports.deleteRow = function (ownerId, dbId, rowId, sendFun) {
+    handleRow("delete", ownerId, dbId, {_id: rowId}, sendFun);
+}
+
 
 module.exports.createDB = function(ownerId, dbSpecs, sendFun) {
 
@@ -285,10 +335,11 @@ module.exports.createDB = function(ownerId, dbSpecs, sendFun) {
 	epdbDatabaseSchema.find({}, (err, dbs) => {
 
 	    console.log("dbs=",dbs)
-	    // sanitize dbSpecs.dbName
+	    // sanitize dbSpecs.dbName:
+	    // if db 'foo' is repeatedly added, copies will be called 'foo*','foo**','foo***' etc
 	    if (!isEmpty(dbs)) {
 		let existingNames = dbs.map( (db) => {return(db.dbName)} );
-		if (existingNames.includes(dbSpecs.dbName)) {
+		while (existingNames.includes(dbSpecs.dbName)) {
 		    dbSpecs.dbName = dbSpecs.dbName+"*";
 		}
 	    }
