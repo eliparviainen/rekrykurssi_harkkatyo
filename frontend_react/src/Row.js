@@ -226,7 +226,6 @@ export default class Row extends React.Component {
 	    case "string":
 	    case "number":
 	    default:
-		fieldElem =
 		    fieldElem = <TextField name="dbfield" variant="outlined" margin="normal" InputProps={{readOnly: true}} label={key} defaultValue={this.props.appState.dbRows[this.props.viewRowIndex][key]} />
 		    break;
 	    } // switch
@@ -323,8 +322,10 @@ export default class Row extends React.Component {
 */
 	    // view
 
-	    
-	    let fieldElem = <TextField name="dbfield" variant="outlined" margin="normal" InputProps={{readOnly: true}} label={key} defaultValue={this.props.appState.rowUnderUpdate[key]} />
+
+	    let fieldElem = <TextField name="dbfield" variant="outlined" margin="normal" InputProps={{readOnly: true}} label={key} defaultValue={this.props.appState.dbRows[this.props.viewRowIndex][key]} />
+		
+//	    let fieldElem = <TextField name="dbfield" variant="outlined" margin="normal" InputProps={{readOnly: true}} label={key} defaultValue={this.props.appState.rowUnderUpdate[key]}		/>
 
 	    	return(
 		       <Grid item xs={elemwid} key={index}>

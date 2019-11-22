@@ -115,10 +115,10 @@ export default class ContentsArea extends React.Component {
 
 	    for (let groupingVariableValue in this.props.appState.settings.valueVisibility) {
 
-/*
+
 		console.log("ContentArea, groupby",this.props.appState.settings.groupBy)
 		console.log("ContentArea, groupby-val",groupingVariableValue)
-*/
+
 		
 		if (this.props.appState.settings.valueVisibility[groupingVariableValue]) {
 
@@ -127,8 +127,12 @@ export default class ContentsArea extends React.Component {
 			(dbrow,index) => {
 
 	    		    //console.log("ContentArea, grouping:",index)
+
+			    console.log("ContentArea", dbrow[this.props.appState.settings.groupBy])
 			    
 			    if (dbrow[this.props.appState.settings.groupBy]===groupingVariableValue) {
+
+				
 				return(this.renderOneRow(index,dbrow));
 			    }
 			

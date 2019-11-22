@@ -675,6 +675,7 @@ class App extends React.Component {
     
     render() {
 
+	console.log("BUGI: näyttää isot oravat kun otsikko sanoo että pienet")
 	console.log("PIKKUBUGEJA: 1: selectin leveys ei muutu vaikka pitkä dbnimi");
 
 	/*
