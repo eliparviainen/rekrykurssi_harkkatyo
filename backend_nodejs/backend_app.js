@@ -8,6 +8,7 @@ const ifVerbose = require('./backend_verbose')
 
 
 DEFAULT_TTL = 1000*60*60;
+//DEFAULT_TTL = 5000;
 
 
 let app = express();
@@ -53,7 +54,7 @@ epdbDatabaseSchema = mongoose.model('epdbDatabaseSchema', epdbDatabaseSchemaDef 
 let epdbSessionDef = new mongoose.Schema({
     userId : { type: mongoose.Schema.Types.ObjectId, ref: 'epdbUser', required: true },
     token : { type: String, required: true },
-    livesUntil : { type: Date, required: true },
+    livesUntil : { type: Number, required: true },
     signoutAfterMilliseconds : { type: Number, default: DEFAULT_TTL }
 });
 
@@ -73,20 +74,19 @@ userRouter.post('/signout/:userId', checkSigninStatus, signout_post);
 
 
 let schemaRouter = express.Router();
-app.use("/epdb/structure", checkSessionLife, checkSigninStatus, checkContents, schemaRouter);
-schemaRouter.post('/:userId', schemas_create);
+app.use("/epdb/structure", checkSessionLife, checkContents, schemaRouter);
+schemaRouter.post('/:userId', checkSigninStatus, schemas_create);
 schemaRouter.get('/:userId', schemas_readAll);
 schemaRouter.get('/:userId/:dbId', checkDBaccess, schemas_readOne);
 
 
 let contentRouter = express.Router();
-app.use("/epdb/content", checkSessionLife, checkSigninStatus, checkDBaccess, checkContents, contentRouter);
-contentRouter.post('/:userId', schemas_create);
+app.use("/epdb/content", checkSessionLife, checkDBaccess, checkContents, contentRouter);
 contentRouter.get('/:userId/:dbId', content_readAll);
 // contentRouter.get('/:userId/:dbId/:rowId', checkRowAccess, content_readOne);
-contentRouter.post('/:userId/:dbId', content_create);
-contentRouter.put('/:userId/:dbId/:rowId', checkRowAccess, content_edit);
-contentRouter.delete('/:userId/:dbId/:rowId', checkRowAccess, content_delete);
+contentRouter.post('/:userId/:dbId', checkSigninStatus, content_create);
+contentRouter.put('/:userId/:dbId/:rowId', checkSigninStatus, checkRowAccess, content_edit);
+contentRouter.delete('/:userId/:dbId/:rowId', checkSigninStatus, checkRowAccess, content_delete);
 
 
 
@@ -94,25 +94,73 @@ contentRouter.delete('/:userId/:dbId/:rowId', checkRowAccess, content_delete);
 // PLACEHOLDERS, muista toteuttaa nämä
 // ============================================================
 
-
+const KESKENERANEN_KOODI_POIS_PAALTA = true;
 
 function checkSessionLife(req, res, next) {
-    // muista automaattitimeoutit, nyt jää kaatumisten takia paljon kuolleita sessioita kantaan
-    console.log("TOTEUTTAMATTA: checkSessionLife");
-    return next();    
+
+    if (KESKENERANEN_KOODI_POIS_PAALTA)
+    {
+	console.log("checkSessionLife TOTEUTTAMATTA");
+	return next();
+    }
+	
+    ifVerbose("checkSessionLife, enter");
+
+    console.log("checkSessionLife, params",req.params);
+    console.log("checkSessionLife, uid",req.params.userId);
+
+    if (!req.params.userId) { return next(); }
+
+    
+    DBiface.findSessionByUID(req.params.userId, (err, session) => {
+	console.log("checksession, sessio",session)
+	
+	if (!session||isEmpty(session)) { return next(); }
+	console.log("checksession, now",Date.now())
+	console.log("checksession, livesuntil",session.livesUntil)
+	if (Date.now()>session.livesUntil) {	    
+	    return res.status(403).json({msg: "session timed out"});
+	} else {
+	    session.livesUntil = Date.now() + session.signoutAfterMilliseconds;
+	    console.log("designrikko: backend-app kutsuu suoraan mongoosea");
+	    let sessObj = new epdbSession(session);
+	    sessObj.save((err, session) => {
+		if (!session) { return res.status(403).json({msg: "session problem"}); }
+		if (err) { return res.status(403).json({msg: "session problem"}); }
+		return next();
+	    })  // save
+	}
+    }) // find
 }
 
 function checkSigninStatus(req, res, next) {
-    console.log("TOTEUTTAMATTA: checkSigninStatus");
-    return next();    
+
+    if (KESKENERANEN_KOODI_POIS_PAALTA)
+    {
+	console.log("checkSigninStatus TOTEUTTAMATTA");
+	return next();
+    }
+
+    ifVerbose("checkSigninStatus, enter");
+
+    console.log("tarkista token?")
+    
+    DBiface.findSessionByUID(req.params.userId, (err, session) => {
+	if (!session) { return res.status(403).json({msg: "user not logged in"}); }
+	if (err) { return res.status(403).json({msg: "user not logged in"}); }
+	return next();
+    }) // find
 }
 
 function checkDBaccess(req, res, next) {
+    ifVerbose("checkDBaccess, enter");
     console.log("TOTEUTTAMATTA: checkDBaccess");
     return next();    
 }
 
 function checkContents(req, res, next) {
+
+    ifVerbose("checkContents, enter");
     /*
 ei hyvä, numero nimeltä "EMPTY" ei toimi
     if (req.body) {
@@ -206,7 +254,7 @@ ifVerbose("entering schemas_readOne")
     DBiface.getHeader(req.params.userId, req.params.dbId,
 		      (err, data) => {
 			  if (err) { return passOnError(res, err) }
-			  console.log("schemas_readOne, got header ",data)
+			  //console.log("schemas_readOne, got header ",data)
 			  return res.status(200).json({ "dbId": data._id, "dbName": data.dbName,
 							"dbDescription": data.dbDescription,
 							"dbTemplate": data.dbTemplate});
@@ -244,15 +292,15 @@ ifVerbose("entering signup_post")
 
 
     DBiface.findUserByName(req.body.userName, (err, user) => {
-	console.log("findUserByName palasi");
+	//console.log("findUserByName palasi");
 	
 	if (err) { return passOnError(res, err) }
 
 
-	console.log ("user=",user)
+	//console.log ("user=",user)
 	if (!isEmpty(user)) { return userNameConflict(res, user.userName) }
 
-	console.log ("onko täällä?")
+	//console.log ("onko täällä?")
 	bcrypt.hash(req.body.password, 10, function(err,hash) {
 	    if (err) { return signupError(res, err) }
 
@@ -273,18 +321,18 @@ ifVerbose("entering signin_post")
     DBiface.findUserByName(req.body.userName, (err, user) => {
 	if (err) { return signInError(res, err) }
 
-	console.log("signin:in löytämät käyttäjätiedot",user)
+	//console.log("signin:in löytämät käyttäjätiedot",user)
 	bcrypt.compare(req.body.password, user.password, function(err, success) {
 
-	    console.log("signin bcryptcompare err",err)
-	    console.log("signin bcryptcompare success",success)
+	  //  console.log("signin bcryptcompare err",err)
+	  //  console.log("signin bcryptcompare success",success)
 	    
 	    if (err) { return signInError(res, err) }
 	    if (!success) { return signInError(res, err) }
 	    
 	    DBiface.findSessionByUID(user, (err, existingSession) => {
 		if (err) { return passOnError(res, err) }
-		console.log("existingSession=",existingSession)
+		//console.log("existingSession=",existingSession)
 		if (existingSession) {
 		    return res.status(200).json({userId: user._id, sessionToken: existingSession.token})
 		}
@@ -295,7 +343,7 @@ ifVerbose("entering signin_post")
 		for (let i=0; i<16; i++) {
 		    newToken += aux[Math.floor(Math.random()*aux.length)];
 		}
-		console.log(newToken)
+		//console.log(newToken)
 
 		DBiface.newSession({
 		    userId : user,
@@ -386,12 +434,12 @@ ifVerbose("entering content_delete")
 function content_create(req, res) {
 ifVerbose("entering content_create")
 
-    console.log('content_create req',req.body)
+//    console.log('content_create req',req.body)
     DBiface.createRow(req.params.userId, req.params.dbId, req.body, (err, newRow) => {
-	console.log("content_create, err", err)
-	console.log("content_create, newrow", newRow)
+//	console.log("content_create, err", err)
+//	console.log("content_create, newrow", newRow)
 	if (err) {
-	    console.log("err-haara");
+	    //console.log("err-haara");
 	    return res.status(409).json({msg: "row not added"});
 	} 
     	return res.status(200).json(newRow);

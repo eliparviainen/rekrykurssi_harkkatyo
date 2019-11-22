@@ -94,7 +94,8 @@ return schemaDefJson
 function mongooseJsonFromTemplate(templateForAddingDB) {
     ifVerbose("mongooseJsonFromTemplate, enter");
 
-    console.log("templateForAddingDB",templateForAddingDB);
+    //    console.log("templateForAddingDB",templateForAddingDB);
+    
 let schemaDefJson = {};
 let enumTypeList = [];
 for (let fieldname in templateForAddingDB.dbEnums) { enumTypeList.push(fieldname) };
@@ -107,11 +108,11 @@ for (let fieldname in templateForAddingDB.dbFieldTypes) {
     // enumTypeList.includes(templateForAddingDB.dbFieldTypes[fieldname])) {
     let enumInd = enumTypeList.indexOf(templateForAddingDB.dbFieldTypes[fieldname]);
     if (enumInd>=0) {
-	console.log("..JsonFromTemplate, adding enum");
+	//console.log("..JsonFromTemplate, adding enum");
 	schemaDefJson[fieldname] = { type: String, enum: templateForAddingDB.dbEnums[enumTypeList[enumInd]] };
 
     } else {
-	console.log("..JsonFromTemplate, adding ",templateForAddingDB.dbFieldTypes[fieldname]);
+	//console.log("..JsonFromTemplate, adding ",templateForAddingDB.dbFieldTypes[fieldname]);
 	switch(templateForAddingDB.dbFieldTypes[fieldname]) {
 	case "text":
 	case "string":
@@ -142,10 +143,13 @@ module.exports.getAllRows = function(userId, dbId, sendFun) {
 
     epdbDatabaseSchema.find({_id: dbId}, (err, dbEntry) => {
 
+	if (err) { sendFun(err,[]) }
+	if (!dbEntry || isEmpty(dbEntry)) { sendFun(err,[]) }
+	
 	dbEntry = dbEntry[0];
 	
-	console.log(dbEntry)
-	console.log("tietokanta löyty ", dbEntry.dbName)
+//	console.log(dbEntry)
+//	console.log("tietokanta löyty ", dbEntry.dbName)
 	let modelName = "schemaFor"+dbId;	
 	let schemaDefJson = mongooseJsonFromTemplate(dbEntry.dbTemplate);
     
@@ -156,21 +160,20 @@ module.exports.getAllRows = function(userId, dbId, sendFun) {
 	console.log("malli "+modelName+" ",currentDB)
 
 	console.log("uid=",userId)
+	console.log("type uid=",typeof(userId))
 
-	let haku = 	    
-	    {$or : [ { _owner: userId}, 
-		{
-		    _owner: { $not: userId},
-		    isPublic: true
-		}
-	    ]
-	    }
+	let query = {
+	    $or : [
+		{ _owner: userId}, 				   
+		{ _isPublic: true }	
+	    ]	    
+	}
 
-	console.log("TMP: rivien omistajuus/julkisuustarkastus poissa päältä");
-	haku = {}
+	// jostain syystä edellinen haku ei toimi tyhjällä käyttäjällä
+	if (userId==="0" || userId===0) { query = { _isPublic: true } }
 	
-	currentDB.find(haku
-	,(err, dbRows) => {
+	currentDB.find(query,
+		       (err, dbRows) => {
 
 	    mongoose.deleteModel(modelName);
 	    

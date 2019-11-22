@@ -363,8 +363,8 @@ export default class Row extends React.Component {
 	let narrowElems = [];
 
 
-	let isChecked = {}
-	let onChange= {};
+	let isChecked = {};
+	let onChange= ()=>{};
 	let readonly=true;
 	if (this.props.renderMode==="view") {
 	    isChecked = this.props.appState.dbRows[this.props.viewRowIndex]["_isPublic"];
@@ -376,14 +376,14 @@ export default class Row extends React.Component {
 	}
 
 	narrowElems.push(
-	    <Grid item xs={12} >
+		<Grid key={-1} item xs={12} >
 		    <Card style={{padding:"0.25em"}}>
 		    <FormControlLabel          
 		control={
 			<Checkbox
 		    checked={isChecked}
 		    onChange={onChange}
-		    color="text.primary"
+		    color="default"
 			/>	     
 		}
 		disabled={readonly}
